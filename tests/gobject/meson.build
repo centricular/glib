@@ -12,7 +12,10 @@ gobject_tests = [
 
 # The marshal test requires running a binary, which means we cannot
 # build it when cross-compiling
-if not meson.is_cross_build() or meson.has_exe_wrapper()
+#
+# FIXME: Can't build this standalone on Windows till
+# https://github.com/mesonbuild/meson/issues/1801 is fixed.
+if (not meson.is_cross_build() or meson.has_exe_wrapper()) and build_machine.system() != 'windows'
   gnome = import('gnome')
 
   testmarshal_srcs = gnome.genmarshal('testmarshal',
