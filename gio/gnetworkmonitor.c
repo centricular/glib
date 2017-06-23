@@ -176,7 +176,7 @@ g_network_monitor_get_connectivity (GNetworkMonitor *monitor)
  * g_network_monitor_can_reach:
  * @monitor: a #GNetworkMonitor
  * @connectable: a #GSocketConnectable
- * @cancellable: (allow-none): a #GCancellable, or %NULL
+ * @cancellable: (nullable): a #GCancellable, or %NULL
  * @error: return location for a #GError, or %NULL
  *
  * Attempts to determine whether or not the host pointed to by
@@ -224,6 +224,8 @@ g_network_monitor_real_can_reach_async (GNetworkMonitor     *monitor,
   GError *error = NULL;
 
   task = g_task_new (monitor, cancellable, callback, user_data);
+  g_task_set_source_tag (task, g_network_monitor_real_can_reach_async);
+
   if (g_network_monitor_can_reach (monitor, connectable, cancellable, &error))
     g_task_return_boolean (task, TRUE);
   else
@@ -235,7 +237,7 @@ g_network_monitor_real_can_reach_async (GNetworkMonitor     *monitor,
  * g_network_monitor_can_reach_async:
  * @monitor: a #GNetworkMonitor
  * @connectable: a #GSocketConnectable
- * @cancellable: (allow-none): a #GCancellable, or %NULL
+ * @cancellable: (nullable): a #GCancellable, or %NULL
  * @callback: (scope async): a #GAsyncReadyCallback to call when the
  *     request is satisfied
  * @user_data: (closure): the data to pass to callback function

@@ -12,9 +12,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "config.h"
@@ -636,22 +635,22 @@ test_GDateTime_new_full (void)
   g_date_time_unref (dt);
 
 #ifdef G_OS_UNIX
-  tz = g_time_zone_new ("America/Recife");
+  tz = g_time_zone_new ("America/Tijuana");
 #elif defined G_OS_WIN32
-  tz = g_time_zone_new ("E. South America Standard Time");
+  tz = g_time_zone_new ("Pacific Standard Time");
 #endif
-  dt = g_date_time_new (tz, 2010, 5, 24, 8, 4, 0);
+  dt = g_date_time_new (tz, 2010, 11, 24, 8, 4, 0);
   g_time_zone_unref (tz);
   g_assert_cmpint (2010, ==, g_date_time_get_year (dt));
-  g_assert_cmpint (5, ==, g_date_time_get_month (dt));
+  g_assert_cmpint (11, ==, g_date_time_get_month (dt));
   g_assert_cmpint (24, ==, g_date_time_get_day_of_month (dt));
   g_assert_cmpint (8, ==, g_date_time_get_hour (dt));
   g_assert_cmpint (4, ==, g_date_time_get_minute (dt));
   g_assert_cmpint (0, ==, g_date_time_get_second (dt));
 #ifdef G_OS_UNIX
-  g_assert_cmpstr ("BRT", ==, g_date_time_get_timezone_abbreviation (dt));
+  g_assert_cmpstr ("PST", ==, g_date_time_get_timezone_abbreviation (dt));
 #elif defined G_OS_WIN32
-  g_assert_cmpstr ("E. South America Standard Time", ==,
+  g_assert_cmpstr ("Pacific Standard Time", ==,
                     g_date_time_get_timezone_abbreviation (dt));
 #endif
   g_assert (!g_date_time_is_daylight_savings (dt));
@@ -1326,6 +1325,8 @@ test_z (void)
   g_time_zone_unref (tz);
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-y2k"
 static void
 test_strftime (void)
 {
@@ -1351,6 +1352,7 @@ test_strftime (void)
     }
 #endif
 }
+#pragma GCC diagnostic pop
 
 static void
 test_find_interval (void)

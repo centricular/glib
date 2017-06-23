@@ -184,20 +184,24 @@ check_iter_access (GSequenceIter *iter)
 static gboolean
 is_end (GSequenceIter *iter)
 {
-  GSequence *seq;
+  GSequenceIter *parent = iter->parent;
 
   if (iter->right)
     return FALSE;
 
-  if (!iter->parent)
+  if (!parent)
     return TRUE;
 
-  if (iter->parent->right != iter)
-    return FALSE;
+  while (parent->right == iter)
+    {
+      iter = parent;
+      parent = iter->parent;
 
-  seq = get_sequence (iter);
+      if (!parent)
+        return TRUE;
+    }
 
-  return seq->end_node == iter;
+  return FALSE;
 }
 
 typedef struct
@@ -235,7 +239,7 @@ iter_compare (GSequenceIter *node1,
 
 /**
  * g_sequence_new:
- * @data_destroy: (allow-none): a #GDestroyNotify function, or %NULL
+ * @data_destroy: (nullable): a #GDestroyNotify function, or %NULL
  *
  * Creates a new GSequence. The @data_destroy function, if non-%NULL will
  * be called on all items when the sequence is destroyed and on items that

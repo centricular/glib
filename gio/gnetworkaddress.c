@@ -375,7 +375,7 @@ g_network_address_parse (const gchar  *host_and_port,
       if (end == NULL)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
-                       _("Hostname '%s' contains '[' but not ']'"), host_and_port);
+                       _("Hostname “%s” contains “[” but not “]”"), host_and_port);
           return NULL;
         }
 
@@ -1006,6 +1006,7 @@ g_network_address_address_enumerator_next_async (GSocketAddressEnumerator  *enum
   GTask *task;
 
   task = g_task_new (addr_enum, cancellable, callback, user_data);
+  g_task_set_source_tag (task, g_network_address_address_enumerator_next_async);
 
   if (addr_enum->addresses == NULL)
     {

@@ -186,7 +186,7 @@ g_memory_input_stream_new (void)
  * g_memory_input_stream_new_from_data:
  * @data: (array length=len) (element-type guint8) (transfer full): input data
  * @len: length of the data, may be -1 if @data is a nul-terminated string
- * @destroy: (allow-none): function that is called to free @data, or %NULL
+ * @destroy: (nullable): function that is called to free @data, or %NULL
  *
  * Creates a new #GMemoryInputStream with data in memory of a given size.
  * 
@@ -236,7 +236,7 @@ g_memory_input_stream_new_from_bytes (GBytes  *bytes)
  * @stream: a #GMemoryInputStream
  * @data: (array length=len) (element-type guint8) (transfer full): input data
  * @len: length of the data, may be -1 if @data is a nul-terminated string
- * @destroy: (allow-none): function that is called to free @data, or %NULL
+ * @destroy: (nullable): function that is called to free @data, or %NULL
  *
  * Appends @data to data that can be read from the input stream
  */
@@ -379,6 +379,8 @@ g_memory_input_stream_skip_async (GInputStream        *stream,
 
   nskipped = G_INPUT_STREAM_GET_CLASS (stream)->skip (stream, count, cancellable, &error);
   task = g_task_new (stream, cancellable, callback, user_data);
+  g_task_set_source_tag (task, g_memory_input_stream_skip_async);
+
   if (error)
     g_task_return_error (task, error);
   else
@@ -406,6 +408,7 @@ g_memory_input_stream_close_async (GInputStream        *stream,
   GTask *task;
 
   task = g_task_new (stream, cancellable, callback, user_data);
+  g_task_set_source_tag (task, g_memory_input_stream_close_async);
   g_task_return_boolean (task, TRUE);
   g_object_unref (task);
 }

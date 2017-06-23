@@ -17,6 +17,7 @@
  */
 
 #include "config.h"
+#include "gio_trace.h"
 
 #include "gtask.h"
 
@@ -569,6 +570,7 @@ struct _GTask {
     gboolean boolean;
   } result;
   GDestroyNotify result_destroy;
+  gboolean had_error;
   gboolean result_set;
 };
 
@@ -652,9 +654,9 @@ g_task_finalize (GObject *object)
 
 /**
  * g_task_new:
- * @source_object: (allow-none) (type GObject): the #GObject that owns
+ * @source_object: (nullable) (type GObject): the #GObject that owns
  *   this task, or %NULL.
- * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore.
+ * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
  * @callback: (scope async): a #GAsyncReadyCallback.
  * @callback_data: (closure): user data passed to @callback.
  *
@@ -699,12 +701,15 @@ g_task_new (gpointer              source_object,
   if (source)
     task->creation_time = g_source_get_time (source);
 
+  TRACE (GIO_TASK_NEW (task, source_object, cancellable,
+                       callback, callback_data));
+
   return task;
 }
 
 /**
  * g_task_report_error:
- * @source_object: (allow-none) (type GObject): the #GObject that owns
+ * @source_object: (nullable) (type GObject): the #GObject that owns
  *   this task, or %NULL.
  * @callback: (scope async): a #GAsyncReadyCallback.
  * @callback_data: (closure): user data passed to @callback.
@@ -739,7 +744,7 @@ g_task_report_error (gpointer             source_object,
 
 /**
  * g_task_report_new_error:
- * @source_object: (allow-none) (type GObject): the #GObject that owns
+ * @source_object: (nullable) (type GObject): the #GObject that owns
  *   this task, or %NULL.
  * @callback: (scope async): a #GAsyncReadyCallback.
  * @callback_data: (closure): user data passed to @callback.
@@ -785,8 +790,8 @@ g_task_report_new_error (gpointer             source_object,
 /**
  * g_task_set_task_data:
  * @task: the #GTask
- * @task_data: (allow-none): task-specific data
- * @task_data_destroy: (allow-none): #GDestroyNotify for @task_data
+ * @task_data: (nullable): task-specific data
+ * @task_data_destroy: (nullable): #GDestroyNotify for @task_data
  *
  * Sets @task's task data (freeing the existing task data, if any).
  *
@@ -797,11 +802,15 @@ g_task_set_task_data (GTask          *task,
                       gpointer        task_data,
                       GDestroyNotify  task_data_destroy)
 {
+  g_return_if_fail (G_IS_TASK (task));
+
   if (task->task_data_destroy)
     task->task_data_destroy (task->task_data);
 
   task->task_data = task_data;
   task->task_data_destroy = task_data_destroy;
+
+  TRACE (GIO_TASK_SET_TASK_DATA (task, task_data, task_data_destroy));
 }
 
 /**
@@ -823,7 +832,11 @@ void
 g_task_set_priority (GTask *task,
                      gint   priority)
 {
+  g_return_if_fail (G_IS_TASK (task));
+
   task->priority = priority;
+
+  TRACE (GIO_TASK_SET_PRIORITY (task, priority));
 }
 
 /**
@@ -853,6 +866,7 @@ void
 g_task_set_check_cancellable (GTask    *task,
                               gboolean  check_cancellable)
 {
+  g_return_if_fail (G_IS_TASK (task));
   g_return_if_fail (check_cancellable || !task->return_on_cancel);
 
   task->check_cancellable = check_cancellable;
@@ -905,6 +919,7 @@ gboolean
 g_task_set_return_on_cancel (GTask    *task,
                              gboolean  return_on_cancel)
 {
+  g_return_val_if_fail (G_IS_TASK (task), FALSE);
   g_return_val_if_fail (task->check_cancellable || !return_on_cancel, FALSE);
 
   if (!G_TASK_IS_THREADED (task))
@@ -949,7 +964,11 @@ void
 g_task_set_source_tag (GTask    *task,
                        gpointer  source_tag)
 {
+  g_return_if_fail (G_IS_TASK (task));
+
   task->source_tag = source_tag;
+
+  TRACE (GIO_TASK_SET_SOURCE_TAG (task, source_tag));
 }
 
 /**
@@ -966,6 +985,8 @@ g_task_set_source_tag (GTask    *task,
 gpointer
 g_task_get_source_object (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), NULL);
+
   return task->source_object;
 }
 
@@ -993,6 +1014,8 @@ g_task_ref_source_object (GAsyncResult *res)
 gpointer
 g_task_get_task_data (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), NULL);
+
   return task->task_data;
 }
 
@@ -1009,6 +1032,8 @@ g_task_get_task_data (GTask *task)
 gint
 g_task_get_priority (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), G_PRIORITY_DEFAULT);
+
   return task->priority;
 }
 
@@ -1031,6 +1056,8 @@ g_task_get_priority (GTask *task)
 GMainContext *
 g_task_get_context (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), NULL);
+
   return task->context;
 }
 
@@ -1047,6 +1074,8 @@ g_task_get_context (GTask *task)
 GCancellable *
 g_task_get_cancellable (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), NULL);
+
   return task->cancellable;
 }
 
@@ -1062,6 +1091,8 @@ g_task_get_cancellable (GTask *task)
 gboolean
 g_task_get_check_cancellable (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), FALSE);
+
   return task->check_cancellable;
 }
 
@@ -1077,6 +1108,8 @@ g_task_get_check_cancellable (GTask *task)
 gboolean
 g_task_get_return_on_cancel (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), FALSE);
+
   return task->return_on_cancel;
 }
 
@@ -1093,6 +1126,8 @@ g_task_get_return_on_cancel (GTask *task)
 gpointer
 g_task_get_source_tag (GTask *task)
 {
+  g_return_val_if_fail (G_IS_TASK (task), NULL);
+
   return task->source_tag;
 }
 
@@ -1100,6 +1135,9 @@ g_task_get_source_tag (GTask *task)
 static void
 g_task_return_now (GTask *task)
 {
+  TRACE (GIO_TASK_BEFORE_RETURN (task, task->source_object, task->callback,
+                                 task->callback_data));
+
   g_main_context_push_thread_default (task->context);
 
   if (task->callback != NULL)
@@ -1170,8 +1208,8 @@ g_task_return (GTask           *task,
 
   /* Otherwise, complete in the next iteration */
   source = g_idle_source_new ();
-  g_task_attach_source (task, source, complete_in_idle_cb);
   g_source_set_name (source, "[gio] complete_in_idle_cb");
+  g_task_attach_source (task, source, complete_in_idle_cb);
   g_source_unref (source);
 }
 
@@ -1217,6 +1255,8 @@ g_task_thread_complete (GTask *task)
       g_mutex_unlock (&task->lock);
       return;
     }
+
+  TRACE (GIO_TASK_AFTER_RUN_IN_THREAD (task, task->thread_cancelled));
 
   task->thread_complete = TRUE;
   g_mutex_unlock (&task->lock);
@@ -1337,6 +1377,8 @@ g_task_start_task_thread (GTask           *task,
 
   g_mutex_lock (&task->lock);
 
+  TRACE (GIO_TASK_BEFORE_RUN_IN_THREAD (task, task_func));
+
   task->task_func = task_func;
 
   if (task->cancellable)
@@ -1346,6 +1388,7 @@ g_task_start_task_thread (GTask           *task,
                                                 &task->error))
         {
           task->thread_cancelled = task->thread_complete = TRUE;
+          TRACE (GIO_TASK_AFTER_RUN_IN_THREAD (task, task->thread_cancelled));
           g_thread_pool_push (task_pool, g_object_ref (task), NULL);
           return;
         }
@@ -1452,6 +1495,10 @@ g_task_run_in_thread_sync (GTask           *task,
 
   g_mutex_unlock (&task->lock);
 
+  TRACE (GIO_TASK_BEFORE_RETURN (task, task->source_object,
+                                 NULL  /* callback */,
+                                 NULL  /* callback data */));
+
   /* Notify of completion in this thread. */
   task->completed = TRUE;
   g_object_notify (G_OBJECT (task), "completed");
@@ -1479,6 +1526,8 @@ g_task_attach_source (GTask       *task,
                       GSource     *source,
                       GSourceFunc  callback)
 {
+  g_return_if_fail (G_IS_TASK (task));
+
   g_source_set_callback (source, callback,
                          g_object_ref (task), g_object_unref);
   g_source_set_priority (source, task->priority);
@@ -1490,25 +1539,32 @@ static gboolean
 g_task_propagate_error (GTask   *task,
                         GError **error)
 {
+  gboolean error_set;
+
   if (task->check_cancellable &&
       g_cancellable_set_error_if_cancelled (task->cancellable, error))
-    return TRUE;
+    error_set = TRUE;
   else if (task->error)
     {
       g_propagate_error (error, task->error);
       task->error = NULL;
-      return TRUE;
+      task->had_error = TRUE;
+      error_set = TRUE;
     }
   else
-    return FALSE;
+    error_set = FALSE;
+
+  TRACE (GIO_TASK_PROPAGATE (task, error_set));
+
+  return error_set;
 }
 
 /**
  * g_task_return_pointer:
  * @task: a #GTask
- * @result: (allow-none) (transfer full): the pointer result of a task
+ * @result: (nullable) (transfer full): the pointer result of a task
  *     function
- * @result_destroy: (allow-none): a #GDestroyNotify function.
+ * @result_destroy: (nullable): a #GDestroyNotify function.
  *
  * Sets @task's result to @result and completes the task. If @result
  * is not %NULL, then @result_destroy will be used to free @result if
@@ -1536,6 +1592,7 @@ g_task_return_pointer (GTask          *task,
                        gpointer        result,
                        GDestroyNotify  result_destroy)
 {
+  g_return_if_fail (G_IS_TASK (task));
   g_return_if_fail (task->result_set == FALSE);
 
   task->result.pointer = result;
@@ -1566,6 +1623,8 @@ gpointer
 g_task_propagate_pointer (GTask   *task,
                           GError **error)
 {
+  g_return_val_if_fail (G_IS_TASK (task), NULL);
+
   if (g_task_propagate_error (task, error))
     return NULL;
 
@@ -1591,6 +1650,7 @@ void
 g_task_return_int (GTask  *task,
                    gssize  result)
 {
+  g_return_if_fail (G_IS_TASK (task));
   g_return_if_fail (task->result_set == FALSE);
 
   task->result.size = result;
@@ -1619,6 +1679,8 @@ gssize
 g_task_propagate_int (GTask   *task,
                       GError **error)
 {
+  g_return_val_if_fail (G_IS_TASK (task), -1);
+
   if (g_task_propagate_error (task, error))
     return -1;
 
@@ -1643,6 +1705,7 @@ void
 g_task_return_boolean (GTask    *task,
                        gboolean  result)
 {
+  g_return_if_fail (G_IS_TASK (task));
   g_return_if_fail (task->result_set == FALSE);
 
   task->result.boolean = result;
@@ -1671,6 +1734,8 @@ gboolean
 g_task_propagate_boolean (GTask   *task,
                           GError **error)
 {
+  g_return_val_if_fail (G_IS_TASK (task), FALSE);
+
   if (g_task_propagate_error (task, error))
     return FALSE;
 
@@ -1703,6 +1768,7 @@ void
 g_task_return_error (GTask  *task,
                      GError *error)
 {
+  g_return_if_fail (G_IS_TASK (task));
   g_return_if_fail (task->result_set == FALSE);
   g_return_if_fail (error != NULL);
 
@@ -1763,6 +1829,7 @@ g_task_return_error_if_cancelled (GTask *task)
 {
   GError *error = NULL;
 
+  g_return_val_if_fail (G_IS_TASK (task), FALSE);
   g_return_val_if_fail (task->result_set == FALSE, FALSE);
 
   if (g_cancellable_set_error_if_cancelled (task->cancellable, &error))
@@ -1793,7 +1860,9 @@ g_task_return_error_if_cancelled (GTask *task)
 gboolean
 g_task_had_error (GTask *task)
 {
-  if (task->error != NULL)
+  g_return_val_if_fail (G_IS_TASK (task), FALSE);
+
+  if (task->error != NULL || task->had_error)
     return TRUE;
 
   if (task->check_cancellable && g_cancellable_is_cancelled (task->cancellable))
@@ -1825,7 +1894,7 @@ g_task_get_completed (GTask *task)
 /**
  * g_task_is_valid:
  * @result: (type Gio.AsyncResult): A #GAsyncResult
- * @source_object: (allow-none) (type GObject): the source object
+ * @source_object: (nullable) (type GObject): the source object
  *   expected to be associated with the task
  *
  * Checks that @result is a #GTask, and that @source_object is its

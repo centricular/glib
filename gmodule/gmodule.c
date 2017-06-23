@@ -167,9 +167,15 @@
 /**
  * G_MODULE_EXPORT:
  *
- * Used to declare functions exported by modules. This is a no-op on Linux
- * and Unices, but when compiling for Windows, it marks a symbol to be
- * exported from the library or executable being built.
+ * Used to declare functions exported by libraries or modules.
+ *
+ * When compiling for Windows, it marks the symbol as `dllexport`.
+ *
+ * When compiling for Linux and Unices, it marks the symbol as having `default`
+ * visibility. This is no-op unless the code is being compiled with a
+ * non-default
+ * [visibility flag](https://gcc.gnu.org/onlinedocs/gcc/Code-Gen-Options.html#index-fvisibility-1260)
+ * such as `hidden`.
  */
 
 /**
@@ -670,7 +676,7 @@ g_module_open (const gchar    *file_name,
 
 /**
  * g_module_open:
- * @file_name: (allow-none): the name of the file containing the module, or %NULL
+ * @file_name: (nullable): the name of the file containing the module, or %NULL
  *     to obtain a #GModule representing the main program itself
  * @flags: the flags used for opening the module. This can be the
  *     logical OR of any of the #GModuleFlags
@@ -891,7 +897,7 @@ g_module_name (GModule *module)
 
 /**
  * g_module_build_path:
- * @directory: (allow-none): the directory where the module is. This can be
+ * @directory: (nullable): the directory where the module is. This can be
  *     %NULL or the empty string to indicate that the standard platform-specific
  *     directories will be used, though that is not recommended
  * @module_name: the name of the module

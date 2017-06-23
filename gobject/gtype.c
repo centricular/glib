@@ -139,15 +139,6 @@
 #define g_assert_type_system_initialized() \
   g_assert (static_quark_type_flags)
 
-#ifdef  G_ENABLE_DEBUG
-#define DEBUG_CODE(debug_type, code_block)  G_STMT_START {    \
-    if (_g_type_debug_flags & G_TYPE_DEBUG_ ## debug_type) \
-      { code_block; }                                     \
-} G_STMT_END
-#else /* !G_ENABLE_DEBUG */
-#define DEBUG_CODE(debug_type, code_block)  /* code_block */
-#endif  /* G_ENABLE_DEBUG */
-
 #define TYPE_FUNDAMENTAL_FLAG_MASK (G_TYPE_FLAG_CLASSED | \
 				    G_TYPE_FLAG_INSTANTIATABLE | \
 				    G_TYPE_FLAG_DERIVABLE | \
@@ -1641,7 +1632,7 @@ g_type_interface_add_prerequisite (GType interface_type,
 /**
  * g_type_interface_prerequisites:
  * @interface_type: an interface type
- * @n_prerequisites: (out) (allow-none): location to return the number
+ * @n_prerequisites: (out) (optional): location to return the number
  *     of prerequisites, or %NULL
  *
  * Returns the prerequisites of an interfaces type.
@@ -3537,7 +3528,7 @@ g_type_is_a (GType type,
 /**
  * g_type_children:
  * @type: the parent type
- * @n_children: (out) (allow-none): location to store the length of
+ * @n_children: (out) (optional): location to store the length of
  *     the returned array, or %NULL
  *
  * Return a newly allocated and 0-terminated array of type IDs, listing
@@ -3559,7 +3550,8 @@ g_type_children (GType  type,
       
       G_READ_LOCK (&type_rw_lock);	/* ->children is relocatable */
       children = g_new (GType, node->n_children + 1);
-      memcpy (children, node->children, sizeof (GType) * node->n_children);
+      if (node->n_children != 0)
+        memcpy (children, node->children, sizeof (GType) * node->n_children);
       children[node->n_children] = 0;
       
       if (n_children)
@@ -3580,7 +3572,7 @@ g_type_children (GType  type,
 /**
  * g_type_interfaces:
  * @type: the type to list interface types for
- * @n_interfaces: (out) (allow-none): location to store the length of
+ * @n_interfaces: (out) (optional): location to store the length of
  *     the returned array, or %NULL
  *
  * Return a newly allocated and 0-terminated array of type IDs, listing

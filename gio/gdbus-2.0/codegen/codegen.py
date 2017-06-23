@@ -19,6 +19,7 @@
 #
 # Author: David Zeuthen <davidz@redhat.com>
 
+import os
 import sys
 
 from . import config
@@ -28,12 +29,15 @@ from . import dbustypes
 # ----------------------------------------------------------------------------------------------------
 
 class CodeGenerator:
-    def __init__(self, ifaces, namespace, interface_prefix, generate_objmanager, docbook_gen, h, c):
+    def __init__(self, ifaces, namespace, interface_prefix, generate_objmanager,
+                 generate_autocleanup, docbook_gen, h, c, header_name):
         self.docbook_gen = docbook_gen
         self.generate_objmanager = generate_objmanager
+        self.generate_autocleanup = generate_autocleanup
         self.ifaces = ifaces
         self.h = h
         self.c = c
+        self.header_name = header_name
         self.namespace = namespace
         if len(namespace) > 0:
             if utils.is_ugly_case(namespace):
@@ -47,7 +51,7 @@ class CodeGenerator:
             self.ns_upper = ''
             self.ns_lower = ''
         self.interface_prefix = interface_prefix
-        self.header_guard = self.h.name.upper().replace('.', '_').replace('-', '_').replace('/', '_')
+        self.header_guard = header_name.upper().replace('.', '_').replace('-', '_').replace('/', '_').replace(':', '_')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -66,7 +70,7 @@ class CodeGenerator:
                      '#include "%s"\n'
                      '\n'
                      '#include <string.h>\n'
-                     %(self.h.name))
+                     %(os.path.basename(self.header_name)))
 
         self.c.write('#ifdef G_OS_UNIX\n'
                      '#  include <gio/gunixfdlist.h>\n'
@@ -307,6 +311,11 @@ class CodeGenerator:
 
             self.h.write('};\n')
             self.h.write('\n')
+            if self.generate_autocleanup == 'all':
+                self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
+                self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%s, g_object_unref)\n' % (i.camel_name))
+                self.h.write('#endif\n')
+                self.h.write('\n')
             self.h.write('GType %s_get_type (void) G_GNUC_CONST;\n'%(i.name_lower))
             self.h.write('\n')
             self.h.write('GDBusInterfaceInfo *%s_interface_info (void);\n'%(i.name_lower))
@@ -451,11 +460,11 @@ class CodeGenerator:
             self.h.write('\n')
             self.h.write('GType %s_proxy_get_type (void) G_GNUC_CONST;\n'%(i.name_lower))
             self.h.write('\n')
-            self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
-            self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sProxy, g_object_unref)\n' % (i.camel_name))
-            self.h.write('#endif\n')
-
-            self.h.write('\n')
+            if self.generate_autocleanup in ('objects', 'all'):
+                self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
+                self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sProxy, g_object_unref)\n' % (i.camel_name))
+                self.h.write('#endif\n')
+                self.h.write('\n')
             if i.deprecated:
                 self.h.write('G_GNUC_DEPRECATED ')
             self.h.write('void %s_proxy_new (\n'
@@ -542,10 +551,11 @@ class CodeGenerator:
             self.h.write('\n')
             self.h.write('GType %s_skeleton_get_type (void) G_GNUC_CONST;\n'%(i.name_lower))
             self.h.write('\n')
-            self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
-            self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sSkeleton, g_object_unref)\n' % (i.camel_name))
-            self.h.write('#endif\n')
-            self.h.write('\n')
+            if self.generate_autocleanup in ('objects', 'all'):
+                self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
+                self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sSkeleton, g_object_unref)\n' % (i.camel_name))
+                self.h.write('#endif\n')
+                self.h.write('\n')
             if i.deprecated:
                 self.h.write('G_GNUC_DEPRECATED ')
             self.h.write('%s *%s_skeleton_new (void);\n'%(i.camel_name, i.name_lower))
@@ -610,10 +620,11 @@ class CodeGenerator:
             self.h.write('\n')
             self.h.write('GType %sobject_proxy_get_type (void) G_GNUC_CONST;\n'%(self.ns_lower))
             self.h.write('\n')
-            self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
-            self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sObjectProxy, g_object_unref)\n' % (self.namespace))
-            self.h.write('#endif\n')
-            self.h.write('\n')
+            if self.generate_autocleanup in ('objects', 'all'):
+                self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
+                self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sObjectProxy, g_object_unref)\n' % (self.namespace))
+                self.h.write('#endif\n')
+                self.h.write('\n')
             self.h.write('%sObjectProxy *%sobject_proxy_new (GDBusConnection *connection, const gchar *object_path);\n'%(self.namespace, self.ns_lower))
             self.h.write('\n')
             self.h.write('#define %sTYPE_OBJECT_SKELETON (%sobject_skeleton_get_type ())\n'%(self.ns_upper, self.ns_lower))
@@ -641,10 +652,11 @@ class CodeGenerator:
             self.h.write('\n')
             self.h.write('GType %sobject_skeleton_get_type (void) G_GNUC_CONST;\n'%(self.ns_lower))
             self.h.write('\n')
-            self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
-            self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sObjectSkeleton, g_object_unref)\n' % (self.namespace))
-            self.h.write('#endif\n')
-            self.h.write('\n')
+            if self.generate_autocleanup in ('objects', 'all'):
+                self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
+                self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sObjectSkeleton, g_object_unref)\n' % (self.namespace))
+                self.h.write('#endif\n')
+                self.h.write('\n')
             self.h.write('%sObjectSkeleton *%sobject_skeleton_new (const gchar *object_path);\n'
                          %(self.namespace, self.ns_lower))
             for i in self.ifaces:
@@ -679,10 +691,11 @@ class CodeGenerator:
             self.h.write('  GDBusObjectManagerClientClass parent_class;\n')
             self.h.write('};\n')
             self.h.write('\n')
-            self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
-            self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sObjectManagerClient, g_object_unref)\n' % (self.namespace))
-            self.h.write('#endif\n')
-            self.h.write('\n')
+            if self.generate_autocleanup in ('objects', 'all'):
+                self.h.write('#if GLIB_CHECK_VERSION(2, 44, 0)\n')
+                self.h.write('G_DEFINE_AUTOPTR_CLEANUP_FUNC (%sObjectManagerClient, g_object_unref)\n' % (self.namespace))
+                self.h.write('#endif\n')
+                self.h.write('\n')
             self.h.write('GType %sobject_manager_client_get_type (void) G_GNUC_CONST;\n'%(self.ns_lower))
             self.h.write('\n')
             self.h.write('GType %sobject_manager_client_get_proxy_type (GDBusObjectManagerClient *manager, const gchar *object_path, const gchar *interface_name, gpointer user_data);\n'%(self.ns_lower))
@@ -1700,8 +1713,8 @@ class CodeGenerator:
                      '  GVariantIter iter;\n'
                      '  GVariant *child;\n'
                      '  GValue *paramv;\n'
-                     '  guint num_params;\n'
-                     '  guint n;\n'
+                     '  gsize num_params;\n'
+                     '  gsize n;\n'
                      '  guint signal_id;\n');
         # Note: info could be NULL if we are talking to a newer version of the interface
         self.c.write('  info = (_ExtendedGDBusSignalInfo *) g_dbus_interface_info_lookup_signal ((GDBusInterfaceInfo *) &_%s_interface_info.parent_struct, signal_name);\n'
@@ -2120,9 +2133,9 @@ class CodeGenerator:
                      '  GVariantIter iter;\n'
                      '  GVariant *child;\n'
                      '  GValue *paramv;\n'
-                     '  guint num_params;\n'
+                     '  gsize num_params;\n'
                      '  guint num_extra;\n'
-                     '  guint n;\n'
+                     '  gsize n;\n'
                      '  guint signal_id;\n'
                      '  GValue return_value = G_VALUE_INIT;\n'
                      %(i.name_lower, i.camel_name, i.ns_upper, i.name_upper))

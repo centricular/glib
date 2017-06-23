@@ -50,7 +50,7 @@
  * Both the key and data are arbitrary byte arrays of bytes or characters.
  *
  * Support for HMAC Digests has been added in GLib 2.30, and support for SHA-512
- * in GLib 2.42.
+ * in GLib 2.42. Support for SHA-384 was added in GLib 2.52.
  */
 
 struct _GHmac
@@ -82,6 +82,7 @@ struct _GHmac
  * on it anymore.
  *
  * Support for digests of type %G_CHECKSUM_SHA512 has been added in GLib 2.42.
+ * Support for %G_CHECKSUM_SHA384 was added in GLib 2.52.
  *
  * Returns: the newly created #GHmac, or %NULL.
  *   Use g_hmac_unref() to free the memory allocated by it.
@@ -112,6 +113,7 @@ g_hmac_new (GChecksumType  digest_type,
     case G_CHECKSUM_SHA256:
       block_size = 64; /* RFC 4868 */
       break;
+    case G_CHECKSUM_SHA384:
     case G_CHECKSUM_SHA512:
       block_size = 128; /* RFC 4868 */
       break;
@@ -333,7 +335,7 @@ g_hmac_get_digest (GHmac  *hmac,
  * @digest_type: a #GChecksumType to use for the HMAC
  * @key: (array length=key_len): the key to use in the HMAC
  * @key_len: the length of the key
- * @data: binary blob to compute the HMAC of
+ * @data: (array length=length): binary blob to compute the HMAC of
  * @length: length of @data
  *
  * Computes the HMAC for a binary @data of @length. This is a
@@ -369,6 +371,42 @@ g_compute_hmac_for_data (GChecksumType  digest_type,
 
   return retval;
 }
+
+/**
+ * g_compute_hmac_for_bytes:
+ * @digest_type: a #GChecksumType to use for the HMAC
+ * @key: the key to use in the HMAC
+ * @data: binary blob to compute the HMAC of
+ *
+ * Computes the HMAC for a binary @data. This is a
+ * convenience wrapper for g_hmac_new(), g_hmac_get_string()
+ * and g_hmac_unref().
+ *
+ * The hexadecimal string returned will be in lower case.
+ *
+ * Returns: the HMAC of the binary data as a string in hexadecimal.
+ *   The returned string should be freed with g_free() when done using it.
+ *
+ * Since: 2.50
+ */
+gchar *
+g_compute_hmac_for_bytes (GChecksumType  digest_type,
+                          GBytes        *key,
+                          GBytes        *data)
+{
+  gconstpointer byte_data;
+  gsize length;
+  gconstpointer key_data;
+  gsize key_len;
+
+  g_return_val_if_fail (data != NULL, NULL);
+  g_return_val_if_fail (key != NULL, NULL);
+
+  byte_data = g_bytes_get_data (data, &length);
+  key_data = g_bytes_get_data (key, &key_len);
+  return g_compute_hmac_for_data (digest_type, key_data, key_len, byte_data, length);
+}
+
 
 /**
  * g_compute_hmac_for_string:

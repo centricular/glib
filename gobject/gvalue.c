@@ -327,7 +327,7 @@ g_value_peek_pointer (const GValue *value)
 /**
  * g_value_set_instance:
  * @value: An initialized #GValue structure.
- * @instance: (allow-none): the instance
+ * @instance: (nullable): the instance
  *
  * Sets @value from an instantiatable type via the
  * value_table's collect_value() function.
@@ -534,8 +534,8 @@ g_value_register_transform_func (GType           src_type,
  *
  * Check whether g_value_transform() is able to transform values
  * of type @src_type into values of type @dest_type. Note that for
- * the types to be transformable, they must be compatible and a
- * transform function must be registered.
+ * the types to be transformable, they must be compatible or a
+ * transformation function must be registered.
  *
  * Returns: %TRUE if the transformation is possible, %FALSE otherwise.
  */

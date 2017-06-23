@@ -663,7 +663,9 @@ g_hash_table_maybe_resize (GHashTable *hash_table)
  * and g_str_equal() functions are provided for the most common types
  * of keys. If @key_equal_func is %NULL, keys are compared directly in
  * a similar fashion to g_direct_equal(), but without the overhead of
- * a function call.
+ * a function call. @key_equal_func is called with the key from the hash table
+ * as its first parameter, and the user-provided key to check against as
+ * its second.
  *
  * Returns: a new #GHashTable
  */
@@ -695,7 +697,7 @@ g_hash_table_new (GHashFunc  hash_func,
  * recursively remove further items from the hash table. This is only
  * permissible if the application still holds a reference to the hash table.
  * This means that you may need to ensure that the hash table is empty by
- * calling g_hash_table_remove_all before releasing the last reference using
+ * calling g_hash_table_remove_all() before releasing the last reference using
  * g_hash_table_unref().
  *
  * Returns: a new #GHashTable
@@ -768,7 +770,7 @@ g_hash_table_iter_init (GHashTableIter *iter,
  * g_hash_table_iter_next:
  * @iter: an initialized #GHashTableIter
  * @key: (out) (optional): a location to store the key
- * @value: (out) (nullable) (optional): a location to store the value
+ * @value: (out) (optional): a location to store the value
  *
  * Advances @iter and retrieves the key and/or value that are now
  * pointed to as a result of this advancement. If %FALSE is returned,
@@ -1155,8 +1157,8 @@ g_hash_table_lookup (GHashTable    *hash_table,
  * g_hash_table_lookup_extended:
  * @hash_table: a #GHashTable
  * @lookup_key: the key to look up
- * @orig_key: (out) (optional) (nullable): return location for the original key
- * @value: (out) (optional) (nullable): return location for the value associated
+ * @orig_key: (out) (optional): return location for the original key
+ * @value: (out) (optional): return location for the value associated
  * with the key
  *
  * Looks up a key in the #GHashTable, returning the original key and the

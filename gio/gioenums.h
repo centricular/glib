@@ -328,14 +328,14 @@ typedef enum {
  *   by file renames (moves) and send a single G_FILE_MONITOR_EVENT_MOVED
  *   event instead (NB: not supported on all backends; the default
  *   behaviour -without specifying this flag- is to send single DELETED
- *   and CREATED events).  Deprecated since 2.44: use
+ *   and CREATED events).  Deprecated since 2.46: use
  *   %G_FILE_MONITOR_WATCH_MOVES instead.
  * @G_FILE_MONITOR_WATCH_HARD_LINKS: Watch for changes to the file made
  *   via another hard link. Since 2.36.
  * @G_FILE_MONITOR_WATCH_MOVES: Watch for rename operations on a
  *   monitored directory.  This causes %G_FILE_MONITOR_EVENT_RENAMED,
  *   %G_FILE_MONITOR_EVENT_MOVED_IN and %G_FILE_MONITOR_EVENT_MOVED_OUT
- *   events to be emitted when possible.  Since: 2.44.
+ *   events to be emitted when possible.  Since: 2.46.
  *
  * Flags used to set what a #GFileMonitor will watch for.
  */
@@ -403,13 +403,13 @@ typedef enum {
  *   (deprecated) %G_FILE_MONITOR_SEND_MOVED flag is set
  * @G_FILE_MONITOR_EVENT_RENAMED: the file was renamed within the
  *   current directory -- only sent if the %G_FILE_MONITOR_WATCH_MOVES
- *   flag is set.  Since: 2.44.
+ *   flag is set.  Since: 2.46.
  * @G_FILE_MONITOR_EVENT_MOVED_IN: the file was moved into the
  *   monitored directory from another location -- only sent if the
- *   %G_FILE_MONITOR_WATCH_MOVES flag is set.  Since: 2.44.
+ *   %G_FILE_MONITOR_WATCH_MOVES flag is set.  Since: 2.46.
  * @G_FILE_MONITOR_EVENT_MOVED_OUT: the file was moved out of the
  *   monitored directory to another location -- only sent if the
- *   %G_FILE_MONITOR_WATCH_MOVES flag is set.  Since: 2.44
+ *   %G_FILE_MONITOR_WATCH_MOVES flag is set.  Since: 2.46
  *
  * Specifies what type of event a monitor event is.
  **/
@@ -561,7 +561,7 @@ typedef enum {
   G_IO_ERROR_BROKEN_PIPE,
   G_IO_ERROR_CONNECTION_CLOSED = G_IO_ERROR_BROKEN_PIPE,
   G_IO_ERROR_NOT_CONNECTED,
-  G_IO_ERROR_MESSAGE_TOO_LARGE,
+  G_IO_ERROR_MESSAGE_TOO_LARGE
 } GIOErrorEnum;
 
 
@@ -989,7 +989,7 @@ typedef enum
  * @G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START: If the proxy is for a well-known name,
  * do not ask the bus to launch an owner during proxy initialization or a method call.
  * This flag is only meaningful in proxies for well-known names.
- * @G_DBUS_PROXY_FLAGS_GET_INVALIDATED_PROPERTIES: If set, the property value for any <emphasis>invalidated property</emphasis> will be (asynchronously) retrieved upon receiving the <ulink url="http://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-properties">PropertiesChanged</ulink> D-Bus signal and the property will not cause emission of the #GDBusProxy::g-properties-changed signal. When the value is received the #GDBusProxy::g-properties-changed signal is emitted for the property along with the retrieved value. Since 2.32.
+ * @G_DBUS_PROXY_FLAGS_GET_INVALIDATED_PROPERTIES: If set, the property value for any __invalidated property__ will be (asynchronously) retrieved upon receiving the [`PropertiesChanged`](http://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-properties) D-Bus signal and the property will not cause emission of the #GDBusProxy::g-properties-changed signal. When the value is received the #GDBusProxy::g-properties-changed signal is emitted for the property along with the retrieved value. Since 2.32.
  * @G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START_AT_CONSTRUCTION: If the proxy is for a well-known name,
  * do not ask the bus to launch an owner during proxy initialization, but allow it to be
  * autostarted by a method call. This flag is only meaningful in proxies for well-known names,
@@ -1398,11 +1398,11 @@ typedef enum
 /**
  * GCredentialsType:
  * @G_CREDENTIALS_TYPE_INVALID: Indicates an invalid native credential type.
- * @G_CREDENTIALS_TYPE_LINUX_UCRED: The native credentials type is a <type>struct ucred</type>.
- * @G_CREDENTIALS_TYPE_FREEBSD_CMSGCRED: The native credentials type is a <type>struct cmsgcred</type>.
- * @G_CREDENTIALS_TYPE_OPENBSD_SOCKPEERCRED: The native credentials type is a <type>struct sockpeercred</type>. Added in 2.30.
- * @G_CREDENTIALS_TYPE_SOLARIS_UCRED: The native credentials type is a <type>ucred_t</type>. Added in 2.40.
- * @G_CREDENTIALS_TYPE_NETBSD_UNPCBID: The native credentials type is a <type>struct unpcbid</type>.
+ * @G_CREDENTIALS_TYPE_LINUX_UCRED: The native credentials type is a struct ucred.
+ * @G_CREDENTIALS_TYPE_FREEBSD_CMSGCRED: The native credentials type is a struct cmsgcred.
+ * @G_CREDENTIALS_TYPE_OPENBSD_SOCKPEERCRED: The native credentials type is a struct sockpeercred. Added in 2.30.
+ * @G_CREDENTIALS_TYPE_SOLARIS_UCRED: The native credentials type is a ucred_t. Added in 2.40.
+ * @G_CREDENTIALS_TYPE_NETBSD_UNPCBID: The native credentials type is a struct unpcbid.
  *
  * Enumeration describing different kinds of native credential types.
  *

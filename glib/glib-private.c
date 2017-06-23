@@ -45,7 +45,9 @@ glib__private__ (void)
     g_main_context_new_with_next_id,
 
     g_dir_open_with_errno,
+#ifdef G_OS_UNIX
     g_dir_new_from_dirp,
+#endif
 
     glib_init,
   };

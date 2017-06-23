@@ -316,7 +316,6 @@ g_object_notify_queue_add (GObject            *object,
 }
 
 #ifdef	G_ENABLE_DEBUG
-#define	IF_DEBUG(debug_type)	if (_g_type_debug_flags & G_TYPE_DEBUG_ ## debug_type)
 G_LOCK_DEFINE_STATIC     (debug_objects);
 static guint		 debug_objects_count = 0;
 static GHashTable	*debug_objects_ht = NULL;
@@ -344,13 +343,13 @@ G_DEFINE_DESTRUCTOR(debug_objects_atexit)
 static void
 debug_objects_atexit (void)
 {
-  IF_DEBUG (OBJECTS)
+  GOBJECT_IF_DEBUG (OBJECTS,
     {
       G_LOCK (debug_objects);
       g_message ("stale GObjects: %u", debug_objects_count);
       g_hash_table_foreach (debug_objects_ht, debug_objects_foreach, NULL);
       G_UNLOCK (debug_objects);
-    }
+    });
 }
 #endif	/* G_ENABLE_DEBUG */
 
@@ -394,16 +393,23 @@ _g_object_type_init (void)
   type = g_type_register_fundamental (G_TYPE_OBJECT, g_intern_static_string ("GObject"), &info, &finfo, 0);
   g_assert (type == G_TYPE_OBJECT);
   g_value_register_transform_func (G_TYPE_OBJECT, G_TYPE_OBJECT, g_value_object_transform_value);
-  
-#ifdef	G_ENABLE_DEBUG
-  IF_DEBUG (OBJECTS)
+
+#if G_ENABLE_DEBUG
+  /* We cannot use GOBJECT_IF_DEBUG here because of the G_HAS_CONSTRUCTORS
+   * conditional in between, as the C spec leaves conditionals inside macro
+   * expansions as undefined behavior. Only GCC and Clang are known to work
+   * but compilation breaks on MSVC.
+   *
+   * See: https://bugzilla.gnome.org/show_bug.cgi?id=769504
+   */
+  if (_g_type_debug_flags & G_TYPE_DEBUG_OBJECTS) \
     {
       debug_objects_ht = g_hash_table_new (g_direct_hash, NULL);
-#ifndef G_HAS_CONSTRUCTORS
+# ifndef G_HAS_CONSTRUCTORS
       g_atexit (debug_objects_atexit);
-#endif /* G_HAS_CONSTRUCTORS */
+# endif /* G_HAS_CONSTRUCTORS */
     }
-#endif	/* G_ENABLE_DEBUG */
+#endif /* G_ENABLE_DEBUG */
 }
 
 static void
@@ -981,15 +987,13 @@ g_object_init (GObject		*object,
       g_datalist_id_set_data (&object->qdata, quark_in_construction, object);
     }
 
-#ifdef	G_ENABLE_DEBUG
-  IF_DEBUG (OBJECTS)
+  GOBJECT_IF_DEBUG (OBJECTS,
     {
       G_LOCK (debug_objects);
       debug_objects_count++;
       g_hash_table_insert (debug_objects_ht, object, object);
       G_UNLOCK (debug_objects);
-    }
-#endif	/* G_ENABLE_DEBUG */
+    });
 }
 
 static void
@@ -1039,16 +1043,14 @@ g_object_finalize (GObject *object)
 
   g_datalist_clear (&object->qdata);
   
-#ifdef	G_ENABLE_DEBUG
-  IF_DEBUG (OBJECTS)
+  GOBJECT_IF_DEBUG (OBJECTS,
     {
       G_LOCK (debug_objects);
       g_assert (g_hash_table_lookup (debug_objects_ht, object) == object);
       g_hash_table_remove (debug_objects_ht, object);
       debug_objects_count--;
       G_UNLOCK (debug_objects);
-    }
-#endif	/* G_ENABLE_DEBUG */
+    });
 }
 
 static void
@@ -2731,7 +2733,7 @@ g_object_weak_unref (GObject    *object,
 /**
  * g_object_add_weak_pointer: (skip)
  * @object: The object that should be weak referenced.
- * @weak_pointer_location: (inout) (not optional) (nullable): The memory address
+ * @weak_pointer_location: (inout) (not optional): The memory address
  *    of a pointer.
  *
  * Adds a weak reference from weak_pointer to @object to indicate that
@@ -2759,7 +2761,7 @@ g_object_add_weak_pointer (GObject  *object,
 /**
  * g_object_remove_weak_pointer: (skip)
  * @object: The object that is weak referenced.
- * @weak_pointer_location: (inout) (not optional) (nullable): The memory address
+ * @weak_pointer_location: (inout) (not optional): The memory address
  *    of a pointer.
  *
  * Removes a weak reference from @object that was previously added
@@ -3184,15 +3186,13 @@ g_object_unref (gpointer _object)
 
 	  TRACE (GOBJECT_OBJECT_FINALIZE_END(object,G_TYPE_FROM_INSTANCE(object)));
 
-#ifdef	G_ENABLE_DEBUG
-          IF_DEBUG (OBJECTS)
+          GOBJECT_IF_DEBUG (OBJECTS,
 	    {
 	      /* catch objects not chaining finalize handlers */
 	      G_LOCK (debug_objects);
 	      g_assert (g_hash_table_lookup (debug_objects_ht, object) == NULL);
 	      G_UNLOCK (debug_objects);
-	    }
-#endif	/* G_ENABLE_DEBUG */
+	    });
           g_type_free_instance ((GTypeInstance*) object);
 	}
     }
@@ -3271,8 +3271,8 @@ g_object_set_qdata (GObject *object,
  * g_object_dup_qdata:
  * @object: the #GObject to store user data on
  * @quark: a #GQuark, naming the user data pointer
- * @dup_func: (allow-none): function to dup the value
- * @user_data: (allow-none): passed as user_data to @dup_func
+ * @dup_func: (nullable): function to dup the value
+ * @user_data: (nullable): passed as user_data to @dup_func
  *
  * This is a variant of g_object_get_qdata() which returns
  * a 'duplicate' of the value. @dup_func defines the
@@ -3312,10 +3312,10 @@ g_object_dup_qdata (GObject        *object,
  * g_object_replace_qdata:
  * @object: the #GObject to store user data on
  * @quark: a #GQuark, naming the user data pointer
- * @oldval: (allow-none): the old value to compare against
- * @newval: (allow-none): the new value
- * @destroy: (allow-none): a destroy notify for the new value
- * @old_destroy: (allow-none): destroy notify for the existing value
+ * @oldval: (nullable): the old value to compare against
+ * @newval: (nullable): the new value
+ * @destroy: (nullable): a destroy notify for the new value
+ * @old_destroy: (nullable): destroy notify for the existing value
  *
  * Compares the user data for the key @quark on @object with
  * @oldval, and if they are the same, replaces @oldval with
@@ -3478,8 +3478,8 @@ g_object_set_data (GObject     *object,
  * g_object_dup_data:
  * @object: the #GObject to store user data on
  * @key: a string, naming the user data pointer
- * @dup_func: (allow-none): function to dup the value
- * @user_data: (allow-none): passed as user_data to @dup_func
+ * @dup_func: (nullable): function to dup the value
+ * @user_data: (nullable): passed as user_data to @dup_func
  *
  * This is a variant of g_object_get_data() which returns
  * a 'duplicate' of the value. @dup_func defines the
@@ -3521,10 +3521,10 @@ g_object_dup_data (GObject        *object,
  * g_object_replace_data:
  * @object: the #GObject to store user data on
  * @key: a string, naming the user data pointer
- * @oldval: (allow-none): the old value to compare against
- * @newval: (allow-none): the new value
- * @destroy: (allow-none): a destroy notify for the new value
- * @old_destroy: (allow-none): destroy notify for the existing value
+ * @oldval: (nullable): the old value to compare against
+ * @newval: (nullable): the new value
+ * @destroy: (nullable): a destroy notify for the new value
+ * @old_destroy: (nullable): destroy notify for the existing value
  *
  * Compares the user data for the key @key on @object with
  * @oldval, and if they are the same, replaces @oldval with
@@ -3706,7 +3706,7 @@ g_value_object_lcopy_value (const GValue *value,
 /**
  * g_value_set_object:
  * @value: a valid #GValue of %G_TYPE_OBJECT derived type
- * @v_object: (type GObject.Object) (allow-none): object value to be set
+ * @v_object: (type GObject.Object) (nullable): object value to be set
  *
  * Set the contents of a %G_TYPE_OBJECT derived #GValue to @v_object.
  *
@@ -3748,7 +3748,7 @@ g_value_set_object (GValue   *value,
 /**
  * g_value_set_object_take_ownership: (skip)
  * @value: a valid #GValue of %G_TYPE_OBJECT derived type
- * @v_object: (allow-none): object value to be set
+ * @v_object: (nullable): object value to be set
  *
  * This is an internal function introduced mainly for C marshallers.
  *
@@ -3764,7 +3764,7 @@ g_value_set_object_take_ownership (GValue  *value,
 /**
  * g_value_take_object: (skip)
  * @value: a valid #GValue of %G_TYPE_OBJECT derived type
- * @v_object: (allow-none): object value to be set
+ * @v_object: (nullable): object value to be set
  *
  * Sets the contents of a %G_TYPE_OBJECT derived #GValue to @v_object
  * and takes over the ownership of the callers reference to @v_object;

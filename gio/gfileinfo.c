@@ -1576,7 +1576,7 @@ g_file_info_get_is_symlink (GFileInfo *info)
  *
  * Gets the name for a file.
  *
- * Returns: a string containing the file name.
+ * Returns: (type filename): a string containing the file name.
  **/
 const char *
 g_file_info_get_name (GFileInfo *info)
@@ -1921,7 +1921,7 @@ g_file_info_set_is_symlink (GFileInfo *info,
 /**
  * g_file_info_set_name:
  * @info: a #GFileInfo.
- * @name: a string containing a name.
+ * @name: (type filename): a string containing a name.
  *
  * Sets the name attribute for the current #GFileInfo.
  * See %G_FILE_ATTRIBUTE_STANDARD_NAME.
@@ -2663,7 +2663,7 @@ g_file_attribute_matcher_enumerate_next (GFileAttributeMatcher *matcher)
 
 /**
  * g_file_attribute_matcher_to_string:
- * @matcher: (allow-none): a #GFileAttributeMatcher.
+ * @matcher: (nullable): a #GFileAttributeMatcher.
  *
  * Prints what the matcher is matching against. The format will be 
  * equal to the format passed to g_file_attribute_matcher_new().

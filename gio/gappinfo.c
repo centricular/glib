@@ -23,11 +23,25 @@
 #include "gappinfo.h"
 #include "gappinfoprivate.h"
 #include "gcontextspecificgroup.h"
+#include "gtask.h"
 
 #include "glibintl.h"
 #include <gioerror.h>
 #include <gfile.h>
 
+#ifdef G_OS_UNIX
+#include "gdbusconnection.h"
+#include "gdbusmessage.h"
+#include "gdocumentportal.h"
+#include "gportalsupport.h"
+#endif
+
+#ifdef G_OS_UNIX
+#define FLATPAK_OPENURI_PORTAL_BUS_NAME "org.freedesktop.portal.Desktop"
+#define FLATPAK_OPENURI_PORTAL_PATH "/org/freedesktop/portal/desktop"
+#define FLATPAK_OPENURI_PORTAL_IFACE "org.freedesktop.portal.OpenURI"
+#define FLATPAK_OPENURI_PORTAL_METHOD "OpenURI"
+#endif
 
 /**
  * SECTION:gappinfo
@@ -85,6 +99,10 @@
  * different ideas of what a given URI means.
  */
 
+struct _GAppLaunchContextPrivate {
+  char **envp;
+};
+
 typedef GAppInfoIface GAppInfoInterface;
 G_DEFINE_INTERFACE (GAppInfo, g_app_info, G_TYPE_OBJECT)
 
@@ -120,6 +138,10 @@ g_app_info_dup (GAppInfo *appinfo)
  * @appinfo2: the second #GAppInfo.
  *
  * Checks if two #GAppInfos are equal.
+ *
+ * Note that the check <em>may not</em> compare each individual field, and
+ * only does an identity check. In case detecting changes in the contents
+ * is needed, program code must additionally compare relevant fields.
  *
  * Returns: %TRUE if @appinfo1 is equal to @appinfo2. %FALSE otherwise.
  **/
@@ -240,7 +262,7 @@ g_app_info_get_description (GAppInfo *appinfo)
  * 
  * Gets the executable's name for the installed application.
  *
- * Returns: a string containing the @appinfo's application 
+ * Returns: (type filename): a string containing the @appinfo's application
  * binaries name
  **/
 const char *
@@ -263,7 +285,7 @@ g_app_info_get_executable (GAppInfo *appinfo)
  * Gets the commandline with which the application will be
  * started.  
  *
- * Returns: a string containing the @appinfo's commandline, 
+ * Returns: (type filename): a string containing the @appinfo's commandline,
  *     or %NULL if this information is not available
  *
  * Since: 2.20
@@ -339,7 +361,8 @@ g_app_info_set_as_last_used_for_type (GAppInfo    *appinfo,
 /**
  * g_app_info_set_as_default_for_extension:
  * @appinfo: a #GAppInfo.
- * @extension: a string containing the file extension (without the dot).
+ * @extension: (type filename): a string containing the file extension
+ *     (without the dot).
  * @error: a #GError.
  * 
  * Sets the application as the default handler for the given file extension.
@@ -515,8 +538,8 @@ g_app_info_get_icon (GAppInfo *appinfo)
 /**
  * g_app_info_launch:
  * @appinfo: a #GAppInfo
- * @files: (allow-none) (element-type GFile): a #GList of #GFile objects
- * @launch_context: (allow-none): a #GAppLaunchContext or %NULL
+ * @files: (nullable) (element-type GFile): a #GList of #GFile objects
+ * @launch_context: (nullable): a #GAppLaunchContext or %NULL
  * @error: a #GError
  * 
  * Launches the application. Passes @files to the launched application
@@ -610,8 +633,8 @@ g_app_info_supports_files (GAppInfo *appinfo)
 /**
  * g_app_info_launch_uris:
  * @appinfo: a #GAppInfo
- * @uris: (allow-none) (element-type utf8): a #GList containing URIs to launch.
- * @launch_context: (allow-none): a #GAppLaunchContext or %NULL
+ * @uris: (nullable) (element-type utf8): a #GList containing URIs to launch.
+ * @launch_context: (nullable): a #GAppLaunchContext or %NULL
  * @error: a #GError
  * 
  * Launches the application. This passes the @uris to the launched application
@@ -664,23 +687,244 @@ g_app_info_should_show (GAppInfo *appinfo)
   return (* iface->should_show) (appinfo);
 }
 
-/**
- * g_app_info_launch_default_for_uri:
- * @uri: the uri to show
- * @launch_context: (allow-none): an optional #GAppLaunchContext.
- * @error: a #GError.
- *
- * Utility function that launches the default application
- * registered to handle the specified uri. Synchronous I/O
- * is done on the uri to detect the type of the file if
- * required.
- * 
- * Returns: %TRUE on success, %FALSE on error.
- **/
-gboolean
-g_app_info_launch_default_for_uri (const char         *uri,
-				   GAppLaunchContext  *launch_context,
-				   GError            **error)
+#ifdef G_OS_UNIX
+static void
+response_received (GDBusConnection *connection,
+                   const char      *sender_name,
+                   const char      *object_path,
+                   const char      *interface_name,
+                   const char      *signal_name,
+                   GVariant        *parameters,
+                   gpointer         user_data)
+{
+  GTask *task = user_data;
+  guint32 response;
+  guint signal_id;
+
+  signal_id = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (task), "signal-id"));
+  g_dbus_connection_signal_unsubscribe (connection, signal_id);
+
+  g_variant_get (parameters, "(u@a{sv})", &response, NULL);
+
+  if (response == 0)
+    g_task_return_boolean (task, TRUE);
+  else if (response == 1)
+    g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Launch cancelled");
+  else
+    g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED, "Launch failed");
+
+  g_object_unref (task);
+}
+
+static void
+open_uri_done (GObject      *source,
+               GAsyncResult *result,
+               gpointer      user_data)
+{
+  GDBusConnection *connection = G_DBUS_CONNECTION (source);
+  GTask *task = user_data;
+  GVariant *res;
+  GError *error = NULL;
+  const char *path;
+  guint signal_id;
+
+  res = g_dbus_connection_call_finish (connection, result, &error);
+
+  if (res == NULL)
+    {
+      g_task_return_error (task, error);
+      g_object_unref (task);
+      return;
+    }
+
+  g_variant_get (res, "(&o)", &path);
+
+  signal_id =
+      g_dbus_connection_signal_subscribe (connection,
+                                          "org.freedesktop.portal.Desktop",
+                                          "org.freedesktop.portal.Request",
+                                          "Response",
+                                          path,
+                                          NULL,
+                                          G_DBUS_SIGNAL_FLAGS_NO_MATCH_RULE,
+                                          response_received,
+                                          task, NULL);
+
+  g_object_set_data (G_OBJECT (task), "signal-id", GINT_TO_POINTER (signal_id));
+
+  g_variant_unref (res);
+}
+
+static char *
+real_uri_for_portal (const char          *uri,
+                     GAppLaunchContext   *context,
+                     GCancellable        *cancellable,
+                     GAsyncReadyCallback  callback,
+                     gpointer             user_data,
+                     GError             **error)
+{
+  GFile *file = NULL;
+  char *real_uri = NULL;
+
+  file = g_file_new_for_uri (uri);
+  if (g_file_is_native (file))
+    {
+      real_uri = g_document_portal_add_document (file, error);
+      g_object_unref (file);
+
+      if (real_uri == NULL)
+        {
+          g_task_report_error (context, callback, user_data, NULL, *error);
+          return NULL;
+        }
+    }
+  else
+    {
+      g_object_unref (file);
+      real_uri = g_strdup (uri);
+    }
+
+  return real_uri;
+}
+
+static void
+launch_default_with_portal_async (const char          *uri,
+                                  GAppLaunchContext   *context,
+                                  GCancellable        *cancellable,
+                                  GAsyncReadyCallback  callback,
+                                  gpointer             user_data)
+{
+  GDBusConnection *session_bus;
+  GVariantBuilder opt_builder;
+  const char *parent_window = NULL;
+  char *real_uri;
+  GTask *task;
+  GAsyncReadyCallback dbus_callback;
+  GError *error = NULL;
+
+  session_bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
+  if (session_bus == NULL)
+    {
+      g_task_report_error (context, callback, user_data, NULL, error);
+      return;
+    }
+
+  if (context && context->priv->envp)
+    parent_window = g_environ_getenv (context->priv->envp, "PARENT_WINDOW_ID");
+
+  real_uri = real_uri_for_portal (uri, context, cancellable, callback, user_data, &error);
+  if (real_uri == NULL)
+    {
+      g_object_unref (session_bus);
+      return;
+    }
+
+  g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+
+  if (callback)
+    {
+      task = g_task_new (context, cancellable, callback, user_data);
+      dbus_callback = open_uri_done;
+    }
+  else
+    {
+      task = NULL;
+      dbus_callback = NULL;
+    }
+
+  g_dbus_connection_call (session_bus,
+                          FLATPAK_OPENURI_PORTAL_BUS_NAME,
+                          FLATPAK_OPENURI_PORTAL_PATH,
+                          FLATPAK_OPENURI_PORTAL_IFACE,
+                          FLATPAK_OPENURI_PORTAL_METHOD,
+                          g_variant_new ("(ss@a{sv})",
+                                         parent_window ? parent_window : "",
+                                         real_uri,
+                                         g_variant_builder_end (&opt_builder)),
+                          NULL,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          G_MAXINT,
+                          cancellable,
+                          dbus_callback,
+                          task);
+
+  g_dbus_connection_flush (session_bus, cancellable, NULL, NULL);
+  g_object_unref (session_bus);
+  g_free (real_uri);
+}
+
+static void
+launch_default_with_portal_sync (const char          *uri,
+                                 GAppLaunchContext   *context)
+{
+  GDBusConnection *session_bus;
+  GVariantBuilder opt_builder;
+  GVariant *res = NULL;
+  const char *parent_window = NULL;
+  char *real_uri;
+  GError *error = NULL;
+
+  session_bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
+  if (session_bus == NULL)
+    {
+      g_task_report_error (context, NULL, NULL, NULL, error);
+      return;
+    }
+
+  if (context && context->priv->envp)
+    parent_window = g_environ_getenv (context->priv->envp, "PARENT_WINDOW_ID");
+
+  real_uri = real_uri_for_portal (uri, context, NULL, NULL, NULL, &error);
+  if (real_uri == NULL)
+    {
+      g_object_unref (session_bus);
+      return;
+    }
+
+  g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+
+  /* Calling the D-Bus method for the OpenURI portal "protects" the logic from
+   * not ever having the remote method running in case the xdg-desktop-portal
+   * process is not yet running and the caller quits quickly after the call.
+   */
+  res = g_dbus_connection_call_sync (session_bus,
+                                     FLATPAK_OPENURI_PORTAL_BUS_NAME,
+                                     FLATPAK_OPENURI_PORTAL_PATH,
+                                     FLATPAK_OPENURI_PORTAL_IFACE,
+                                     FLATPAK_OPENURI_PORTAL_METHOD,
+                                     g_variant_new ("(ss@a{sv})",
+                                                    parent_window ? parent_window : "",
+                                                    real_uri,
+                                                    g_variant_builder_end (&opt_builder)),
+                                     NULL,
+                                     G_DBUS_CALL_FLAGS_NONE,
+                                     G_MAXINT,
+                                     NULL,
+                                     &error);
+  if (res == NULL)
+    g_task_report_error (context, NULL, NULL, NULL, error);
+  else
+    g_variant_unref (res);
+
+  g_dbus_connection_flush (session_bus, NULL, NULL, NULL);
+  g_object_unref (session_bus);
+  g_free (real_uri);
+}
+
+static gboolean
+launch_default_with_portal (const char         *uri,
+                            GAppLaunchContext  *context,
+                            GError            **error)
+{
+  launch_default_with_portal_sync (uri, context);
+  return TRUE;
+}
+#endif
+
+static gboolean
+launch_default_for_uri (const char         *uri,
+                        GAppLaunchContext  *context,
+                        GError            **error)
 {
   char *uri_scheme;
   GAppInfo *app_info = NULL;
@@ -703,24 +947,112 @@ g_app_info_launch_default_for_uri (const char         *uri,
       file = g_file_new_for_uri (uri);
       app_info = g_file_query_default_handler (file, NULL, error);
       g_object_unref (file);
-      if (app_info == NULL)
-	return FALSE;
-
-      /* We still use the original @uri rather than calling
-       * g_file_get_uri(), because GFile might have modified the URI
-       * in ways we don't want (eg, removing the fragment identifier
-       * from a file: URI).
-       */
     }
+
+  if (app_info == NULL)
+    return FALSE;
 
   l.data = (char *)uri;
   l.next = l.prev = NULL;
-  res = g_app_info_launch_uris (app_info, &l,
-				launch_context, error);
+  res = g_app_info_launch_uris (app_info, &l, context, error);
 
   g_object_unref (app_info);
-  
+
   return res;
+}
+
+/**
+ * g_app_info_launch_default_for_uri:
+ * @uri: the uri to show
+ * @launch_context: (nullable): an optional #GAppLaunchContext
+ * @error: (nullable): return location for an error, or %NULL
+ *
+ * Utility function that launches the default application
+ * registered to handle the specified uri. Synchronous I/O
+ * is done on the uri to detect the type of the file if
+ * required.
+ * 
+ * Returns: %TRUE on success, %FALSE on error.
+ **/
+gboolean
+g_app_info_launch_default_for_uri (const char         *uri,
+				   GAppLaunchContext  *launch_context,
+				   GError            **error)
+{
+  if (launch_default_for_uri (uri, launch_context, error))
+    return TRUE;
+
+#ifdef G_OS_UNIX
+  if (glib_should_use_portal ())
+    return launch_default_with_portal (uri, launch_context, error);
+#endif
+
+  return FALSE;
+}
+
+/**
+ * g_app_info_launch_default_for_uri_async:
+ * @uri: the uri to show
+ * @context: (nullable): an optional #GAppLaunchContext
+ * cancellable: (nullable): a #GCancellable
+ * @callback: (nullable): a #GASyncReadyCallback to call when the request is done
+ * @user_data: (nullable): data to pass to @callback
+ *
+ * Async version of g_app_info_launch_default_for_uri().
+ *
+ * This version is useful if you are interested in receiving
+ * error information in the case where the application is
+ * sandboxed and the portal may present an application chooser
+ * dialog to the user.
+ *
+ * Since: 2.50
+ */
+void
+g_app_info_launch_default_for_uri_async (const char          *uri,
+                                         GAppLaunchContext   *context,
+                                         GCancellable        *cancellable,
+                                         GAsyncReadyCallback  callback,
+                                         gpointer             user_data)
+{
+  gboolean res;
+  GError *error = NULL;
+  GTask *task;
+
+  res = launch_default_for_uri (uri, context, &error);
+
+#ifdef G_OS_UNIX
+  if (!res && glib_should_use_portal ())
+    {
+      launch_default_with_portal_async (uri, context, cancellable, callback, user_data);
+      return;
+    }
+#endif
+
+  task = g_task_new (context, cancellable, callback, user_data);
+  if (!res)
+    g_task_return_error (task, error);
+  else
+    g_task_return_boolean (task, TRUE);
+
+  g_object_unref (task);
+}
+
+/**
+ * g_app_info_launch_default_for_uri_finish:
+ * @result: a #GAsyncResult
+ * @error: (nullable): return location for an error, or %NULL
+ *
+ * Finishes an asynchronous launch-default-for-uri operation.
+ *
+ * Returns: %TRUE if the launch was successful, %FALSE if @error is set
+ *
+ * Since: 2.50
+ */
+gboolean
+g_app_info_launch_default_for_uri_finish (GAsyncResult  *result,
+                                          GError       **error)
+{
+  return g_task_propagate_boolean (G_TASK (result), error);
 }
 
 /**
@@ -785,10 +1117,6 @@ enum {
   LAUNCH_FAILED,
   LAUNCHED,
   LAST_SIGNAL
-};
-
-struct _GAppLaunchContextPrivate {
-  char **envp;
 };
 
 static guint signals[LAST_SIGNAL] = { 0 };

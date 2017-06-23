@@ -51,6 +51,7 @@ IGNORE_HFILES = \
 	gfileattribute-priv.h		\
 	gfileinfo-priv.h		\
 	ghttpproxy.h			\
+	gio_trace.h			\
 	giomodule-priv.h		\
 	gioprivate.h			\
 	giowin32-priv.h			\
@@ -140,6 +141,7 @@ content_files =			\
 	gresource.xml		\
 	gdbus.xml		\
 	gdbus-codegen.xml	\
+	gio.xml			\
 	$(NULL)
 
 expand_content_files =		\
@@ -167,15 +169,17 @@ man_MANS =
 
 if ENABLE_MAN
 
-man_MANS +=			\
-	gapplication.1		\
-	gio-querymodules.1	\
-	glib-compile-schemas.1	\
+man_MANS +=				\
+	gapplication.1			\
+	gio-querymodules.1		\
+	glib-compile-schemas.1		\
 	glib-compile-resources.1	\
-	gsettings.1		\
-	gresource.1		\
-	gdbus.1			\
-	gdbus-codegen.1
+	gsettings.1			\
+	gresource.1			\
+	gdbus.1				\
+	gdbus-codegen.1			\
+	gio.1				\
+	$(NULL)
 
 XSLTPROC_FLAGS = \
         --nonet \

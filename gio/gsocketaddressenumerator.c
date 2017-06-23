@@ -48,7 +48,7 @@ g_socket_address_enumerator_class_init (GSocketAddressEnumeratorClass *enumerato
 /**
  * g_socket_address_enumerator_next:
  * @enumerator: a #GSocketAddressEnumerator
- * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore.
+ * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
  * @error: a #GError.
  *
  * Retrieves the next #GSocketAddress from @enumerator. Note that this
@@ -98,6 +98,7 @@ g_socket_address_enumerator_real_next_async (GSocketAddressEnumerator *enumerato
   GError *error = NULL;
 
   task = g_task_new (enumerator, NULL, callback, user_data);
+  g_task_set_source_tag (task, g_socket_address_enumerator_real_next_async);
 
   address = g_socket_address_enumerator_next (enumerator, cancellable, &error);
   if (error)
@@ -111,7 +112,7 @@ g_socket_address_enumerator_real_next_async (GSocketAddressEnumerator *enumerato
 /**
  * g_socket_address_enumerator_next_async:
  * @enumerator: a #GSocketAddressEnumerator
- * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore.
+ * @cancellable: (nullable): optional #GCancellable object, %NULL to ignore.
  * @callback: (scope async): a #GAsyncReadyCallback to call when the request
  *     is satisfied
  * @user_data: (closure): the data to pass to callback function

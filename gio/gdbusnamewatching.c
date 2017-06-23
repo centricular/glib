@@ -77,7 +77,10 @@ typedef struct
   gboolean                  initialized;
 } Client;
 
-static guint next_global_id = 1;
+/* Must be accessed atomically. */
+static volatile guint next_global_id = 1;
+
+/* Must be accessed with @lock held. */
 static GHashTable *map_id_to_client = NULL;
 
 static Client *
@@ -505,10 +508,10 @@ connection_get_cb (GObject      *source_object,
  * @bus_type: The type of bus to watch a name on.
  * @name: The name (well-known or unique) to watch.
  * @flags: Flags from the #GBusNameWatcherFlags enumeration.
- * @name_appeared_handler: (allow-none): Handler to invoke when @name is known to exist or %NULL.
- * @name_vanished_handler: (allow-none): Handler to invoke when @name is known to not exist or %NULL.
+ * @name_appeared_handler: (nullable): Handler to invoke when @name is known to exist or %NULL.
+ * @name_vanished_handler: (nullable): Handler to invoke when @name is known to not exist or %NULL.
  * @user_data: User data to pass to handlers.
- * @user_data_free_func: (allow-none): Function for freeing @user_data or %NULL.
+ * @user_data_free_func: (nullable): Function for freeing @user_data or %NULL.
  *
  * Starts watching @name on the bus specified by @bus_type and calls
  * @name_appeared_handler and @name_vanished_handler when the name is
@@ -562,7 +565,7 @@ g_bus_watch_name (GBusType                  bus_type,
 
   client = g_new0 (Client, 1);
   client->ref_count = 1;
-  client->id = next_global_id++; /* TODO: uh oh, handle overflow */
+  client->id = g_atomic_int_add (&next_global_id, 1); /* TODO: uh oh, handle overflow */
   client->name = g_strdup (name);
   client->flags = flags;
   client->name_appeared_handler = name_appeared_handler;
@@ -594,10 +597,10 @@ g_bus_watch_name (GBusType                  bus_type,
  * @connection: A #GDBusConnection.
  * @name: The name (well-known or unique) to watch.
  * @flags: Flags from the #GBusNameWatcherFlags enumeration.
- * @name_appeared_handler: (allow-none): Handler to invoke when @name is known to exist or %NULL.
- * @name_vanished_handler: (allow-none): Handler to invoke when @name is known to not exist or %NULL.
+ * @name_appeared_handler: (nullable): Handler to invoke when @name is known to exist or %NULL.
+ * @name_vanished_handler: (nullable): Handler to invoke when @name is known to not exist or %NULL.
  * @user_data: User data to pass to handlers.
- * @user_data_free_func: (allow-none): Function for freeing @user_data or %NULL.
+ * @user_data_free_func: (nullable): Function for freeing @user_data or %NULL.
  *
  * Like g_bus_watch_name() but takes a #GDBusConnection instead of a
  * #GBusType.
@@ -624,7 +627,7 @@ guint g_bus_watch_name_on_connection (GDBusConnection          *connection,
 
   client = g_new0 (Client, 1);
   client->ref_count = 1;
-  client->id = next_global_id++; /* TODO: uh oh, handle overflow */
+  client->id = g_atomic_int_add (&next_global_id, 1); /* TODO: uh oh, handle overflow */
   client->name = g_strdup (name);
   client->flags = flags;
   client->name_appeared_handler = name_appeared_handler;
@@ -744,9 +747,9 @@ bus_watch_name_free_func (gpointer user_data)
  * @bus_type: The type of bus to watch a name on.
  * @name: The name (well-known or unique) to watch.
  * @flags: Flags from the #GBusNameWatcherFlags enumeration.
- * @name_appeared_closure: (allow-none): #GClosure to invoke when @name is known
+ * @name_appeared_closure: (nullable): #GClosure to invoke when @name is known
  * to exist or %NULL.
- * @name_vanished_closure: (allow-none): #GClosure to invoke when @name is known
+ * @name_vanished_closure: (nullable): #GClosure to invoke when @name is known
  * to not exist or %NULL.
  *
  * Version of g_bus_watch_name() using closures instead of callbacks for
@@ -778,9 +781,9 @@ g_bus_watch_name_with_closures (GBusType                 bus_type,
  * @connection: A #GDBusConnection.
  * @name: The name (well-known or unique) to watch.
  * @flags: Flags from the #GBusNameWatcherFlags enumeration.
- * @name_appeared_closure: (allow-none): #GClosure to invoke when @name is known
+ * @name_appeared_closure: (nullable): #GClosure to invoke when @name is known
  * to exist or %NULL.
- * @name_vanished_closure: (allow-none): #GClosure to invoke when @name is known
+ * @name_vanished_closure: (nullable): #GClosure to invoke when @name is known
  * to not exist or %NULL.
  *
  * Version of g_bus_watch_name_on_connection() using closures instead of callbacks for

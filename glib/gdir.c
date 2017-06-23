@@ -152,7 +152,7 @@ g_dir_open (const gchar  *path,
       utf8_path = g_filename_to_utf8 (path, -1, NULL, NULL, NULL);
 
       g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (saved_errno),
-                   _("Error opening directory '%s': %s"), utf8_path, g_strerror (saved_errno));
+                   _("Error opening directory “%s”: %s"), utf8_path, g_strerror (saved_errno));
       g_free (utf8_path);
     }
 
@@ -206,10 +206,10 @@ g_dir_open (const gchar  *path,
  *
  * Since: 2.38
  **/
+#ifdef G_OS_UNIX
 GDir *
 g_dir_new_from_dirp (gpointer dirp)
 {
-#ifdef G_OS_UNIX
   GDir *dir;
 
   g_return_val_if_fail (dirp != NULL, NULL);
@@ -218,10 +218,8 @@ g_dir_new_from_dirp (gpointer dirp)
   dir->dirp = dirp;
 
   return dir;
-#else
-  g_assert_not_reached ();
-#endif
 }
+#endif
 
 /**
  * g_dir_read_name:
@@ -241,7 +239,7 @@ g_dir_new_from_dirp (gpointer dirp)
  * On Windows, as is true of all GLib functions which operate on
  * filenames, the returned name is in UTF-8.
  *
- * Returns: The entry's name or %NULL if there are no
+ * Returns: (type filename): The entry's name or %NULL if there are no
  *   more entries. The return value is owned by GLib and
  *   must not be modified or freed.
  **/

@@ -893,7 +893,7 @@ init_zone_from_rules (GTimeZone    *gtz,
           ++info_index;
           skip_first_std_trans = TRUE;
          }
-      else if (rules[ri].std_offset || rules[ri].dlt_offset)
+      else
         {
           const guint start_year = rules[ri].start_year;
           const guint end_year = rules[ri + 1].start_year;
@@ -1279,7 +1279,7 @@ rules_from_identifier (const gchar   *identifier,
 /* Construction {{{1 */
 /**
  * g_time_zone_new:
- * @identifier: (allow-none): a timezone identifier
+ * @identifier: (nullable): a timezone identifier
  *
  * Creates a #GTimeZone corresponding to @identifier.
  *

@@ -88,7 +88,7 @@
  *
  * If used, the expected form of an application identifier is very close
  * to that of of a
- * [DBus bus name](http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names-interface).
+ * [D-Bus bus name](http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names-interface).
  * Examples include: "com.example.MyApp", "org.example.internal-apps.Calculator".
  * For details on valid application identifiers, see g_application_id_is_valid().
  *
@@ -180,11 +180,11 @@
  * @open: invoked on the primary instance when there are files to open
  * @command_line: invoked on the primary instance when a command-line is
  *   not handled locally
- * @local_command_line: invoked (locally) when the process has been invoked
- *     via commandline execution (as opposed to, say, D-Bus activation - which
- *     is not currently supported by GApplication). The virtual function has
- *     the chance to inspect (and possibly replace) the list of command line
- *     arguments. See g_application_run() for more information.
+ * @local_command_line: invoked (locally). The virtual function has the chance
+ *     to inspect (and possibly replace) command line arguments. See
+ *     g_application_run() for more information. Also see the
+ *     #GApplication::handle-local-options signal, which is a simpler
+ *     alternative to handling some commandline options locally
  * @before_emit: invoked on the primary instance before 'activate', 'open',
  *     'command-line' or any action invocation, gets the 'platform data' from
  *     the calling instance
@@ -211,7 +211,7 @@
  *     is using its D-Bus backend. Use this to undo anything done by the
  *     @dbus_register vfunc. Since: 2.34
  * @handle_local_options: invoked locally after the parsing of the commandline
- *  options has occurred.
+ *  options has occurred. Since: 2.40
  *
  * Virtual function table for #GApplication.
  *
@@ -547,7 +547,7 @@ g_application_parse_command_line (GApplication   *application,
     {
       GOptionEntry entries[] = {
         { "gapplication-app-id", '\0', 0, G_OPTION_ARG_STRING, &app_id,
-          N_("Override the application's ID") },
+          N_("Override the application’s ID") },
         { NULL }
       };
 
@@ -1145,7 +1145,7 @@ g_application_set_property (GObject      *object,
 /**
  * g_application_set_action_group:
  * @application: a #GApplication
- * @action_group: (allow-none): a #GActionGroup, or %NULL
+ * @action_group: (nullable): a #GActionGroup, or %NULL
  *
  * This used to be how actions were associated with a #GApplication.
  * Now there is #GActionMap for that.
@@ -1254,10 +1254,10 @@ g_application_finalize (GObject *object)
   if (application->priv->main_options)
     g_option_group_unref (application->priv->main_options);
   if (application->priv->packed_options)
-    {
-      g_slist_free_full (application->priv->option_strings, g_free);
-      g_hash_table_unref (application->priv->packed_options);
-    }
+    g_hash_table_unref (application->priv->packed_options);
+
+  g_slist_free_full (application->priv->option_strings, g_free);
+
   if (application->priv->impl)
     g_application_impl_destroy (application->priv->impl);
   g_free (application->priv->id);
@@ -1606,7 +1606,7 @@ g_application_id_is_valid (const gchar *application_id)
 /* Public Constructor {{{1 */
 /**
  * g_application_new:
- * @application_id: (allow-none): the application id
+ * @application_id: (nullable): the application id
  * @flags: the application flags
  *
  * Creates a new #GApplication instance.
@@ -1653,7 +1653,7 @@ g_application_get_application_id (GApplication *application)
 /**
  * g_application_set_application_id:
  * @application: a #GApplication
- * @application_id: (allow-none): the identifier for @application
+ * @application_id: (nullable): the identifier for @application
  *
  * Sets the unique identifier for @application.
  *
@@ -1979,7 +1979,7 @@ g_application_get_dbus_object_path (GApplication *application)
 /**
  * g_application_register:
  * @application: a #GApplication
- * @cancellable: (allow-none): a #GCancellable, or %NULL
+ * @cancellable: (nullable): a #GCancellable, or %NULL
  * @error: a pointer to a NULL #GError, or %NULL
  *
  * Attempts registration of the application.
@@ -2198,7 +2198,7 @@ g_application_open (GApplication  *application,
  * g_application_run:
  * @application: a #GApplication
  * @argc: the argc from main() (or 0 if @argv is %NULL)
- * @argv: (array length=argc) (allow-none): the argv from main(), or %NULL
+ * @argv: (array length=argc) (nullable): the argv from main(), or %NULL
  *
  * Runs the application.
  *
@@ -2577,7 +2577,7 @@ g_application_get_default (void)
 
 /**
  * g_application_set_default:
- * @application: (allow-none): the application to set as default, or %NULL
+ * @application: (nullable): the application to set as default, or %NULL
  *
  * Sets or unsets the default application for the process, as returned
  * by g_application_get_default().
@@ -2705,7 +2705,7 @@ g_application_get_is_busy (GApplication *application)
 /**
  * g_application_send_notification:
  * @application: a #GApplication
- * @id: (allow-none): id of the notification, or %NULL
+ * @id: (nullable): id of the notification, or %NULL
  * @notification: the #GNotification to send
  *
  * Sends a notification on behalf of @application to the desktop shell.

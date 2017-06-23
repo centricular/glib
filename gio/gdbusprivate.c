@@ -27,6 +27,8 @@
 #include "gsocket.h"
 #include "gdbusprivate.h"
 #include "gdbusmessage.h"
+#include "gdbusconnection.h"
+#include "gdbusproxy.h"
 #include "gdbuserror.h"
 #include "gdbusintrospection.h"
 #include "gtask.h"
@@ -173,6 +175,7 @@ _g_socket_read_with_control_messages (GSocket                 *socket,
   data->num_messages = num_messages;
 
   task = g_task_new (socket, cancellable, callback, user_data);
+  g_task_set_source_tag (task, _g_socket_read_with_control_messages);
   g_task_set_task_data (task, data, (GDestroyNotify) read_with_control_data_free);
 
   if (g_socket_condition_check (socket, G_IO_IN))
@@ -201,7 +204,8 @@ _g_socket_read_with_control_messages_finish (GSocket       *socket,
 
 /* ---------------------------------------------------------------------------------------------------- */
 
-/* Work-around for https://bugzilla.gnome.org/show_bug.cgi?id=627724 */
+/* Work-around for https://bugzilla.gnome.org/show_bug.cgi?id=674885
+   and see also the original https://bugzilla.gnome.org/show_bug.cgi?id=627724  */
 
 static GPtrArray *ensured_classes = NULL;
 
@@ -226,6 +230,8 @@ ensure_required_types (void)
   ensured_classes = g_ptr_array_new ();
   ensure_type (G_TYPE_TASK);
   ensure_type (G_TYPE_MEMORY_INPUT_STREAM);
+  ensure_type (G_TYPE_DBUS_CONNECTION);
+  ensure_type (G_TYPE_DBUS_PROXY);
 }
 /* ---------------------------------------------------------------------------------------------------- */
 
@@ -262,9 +268,6 @@ _g_dbus_shared_thread_ref (void)
   if (g_once_init_enter (&shared_thread_data))
     {
       SharedThreadData *data;
-
-      /* Work-around for https://bugzilla.gnome.org/show_bug.cgi?id=627724 */
-      ensure_required_types ();
 
       data = g_new0 (SharedThreadData, 1);
       data->refcount = 0;
@@ -1091,6 +1094,7 @@ write_message_async (GDBusWorker         *worker,
                      gpointer             user_data)
 {
   data->task = g_task_new (NULL, NULL, callback, user_data);
+  g_task_set_source_tag (data->task, write_message_async);
   data->total_written = 0;
   write_message_continue_writing (data);
 }
@@ -1519,9 +1523,9 @@ continue_writing_in_idle_cb (gpointer user_data)
 }
 
 /*
- * @write_data: (transfer full) (allow-none):
- * @flush_data: (transfer full) (allow-none):
- * @close_data: (transfer full) (allow-none):
+ * @write_data: (transfer full) (nullable):
+ * @flush_data: (transfer full) (nullable):
+ * @close_data: (transfer full) (nullable):
  *
  * Can be called from any thread
  *
@@ -1569,10 +1573,10 @@ schedule_writing_unlocked (GDBusWorker        *worker,
 static void
 schedule_pending_close (GDBusWorker *worker)
 {
-  if (!worker->pending_close_attempts)
-    return;
-
-  schedule_writing_unlocked (worker, NULL, NULL, NULL);
+  g_mutex_lock (&worker->write_lock);
+  if (worker->pending_close_attempts)
+    schedule_writing_unlocked (worker, NULL, NULL, NULL);
+  g_mutex_unlock (&worker->write_lock);
 }
 
 /* ---------------------------------------------------------------------------------------------------- */
@@ -1918,6 +1922,9 @@ _g_dbus_initialize (void)
           if (_gdbus_debug_flags & G_DBUS_DEBUG_PAYLOAD)
             _gdbus_debug_flags |= G_DBUS_DEBUG_MESSAGE;
         }
+
+      /* Work-around for https://bugzilla.gnome.org/show_bug.cgi?id=627724 */
+      ensure_required_types ();
 
       g_once_init_leave (&initialized, 1);
     }

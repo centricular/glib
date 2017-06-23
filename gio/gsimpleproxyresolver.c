@@ -377,6 +377,7 @@ g_simple_proxy_resolver_lookup_async (GProxyResolver      *proxy_resolver,
   char **proxies;
 
   task = g_task_new (resolver, cancellable, callback, user_data);
+  g_task_set_source_tag (task, g_simple_proxy_resolver_lookup_async);
 
   proxies = g_simple_proxy_resolver_lookup (proxy_resolver, uri,
                                             cancellable, &error);
@@ -483,9 +484,9 @@ g_simple_proxy_resolver_iface_init (GProxyResolverInterface *iface)
 
 /**
  * g_simple_proxy_resolver_new:
- * @default_proxy: (allow-none): the default proxy to use, eg
+ * @default_proxy: (nullable): the default proxy to use, eg
  *     "socks://192.168.1.1"
- * @ignore_hosts: (allow-none): an optional list of hosts/IP addresses
+ * @ignore_hosts: (nullable): an optional list of hosts/IP addresses
  *     to not use a proxy for.
  *
  * Creates a new #GSimpleProxyResolver. See

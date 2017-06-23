@@ -143,7 +143,7 @@ g_emblemed_icon_init (GEmblemedIcon *emblemed)
 /**
  * g_emblemed_icon_new:
  * @icon: a #GIcon
- * @emblem: (allow-none): a #GEmblem, or %NULL
+ * @emblem: (nullable): a #GEmblem, or %NULL
  *
  * Creates a new emblemed icon for @icon with the emblem @emblem.
  *
@@ -359,7 +359,7 @@ g_emblemed_icon_from_tokens (gchar  **tokens,
       g_set_error (error,
                    G_IO_ERROR,
                    G_IO_ERROR_INVALID_ARGUMENT,
-                   _("Can't handle version %d of GEmblemedIcon encoding"),
+                   _("Can’t handle version %d of GEmblemedIcon encoding"),
                    version);
       goto fail;
     }

@@ -448,8 +448,8 @@ on_run (GSocketService    *service,
  * @address: A D-Bus address.
  * @flags: Flags from the #GDBusServerFlags enumeration.
  * @guid: A D-Bus GUID.
- * @observer: (allow-none): A #GDBusAuthObserver or %NULL.
- * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @observer: (nullable): A #GDBusAuthObserver or %NULL.
+ * @cancellable: (nullable): A #GCancellable or %NULL.
  * @error: Return location for server or %NULL.
  *
  * Creates a new D-Bus server that listens on the first address in
@@ -504,8 +504,9 @@ g_dbus_server_new_sync (const gchar        *address,
  * g_dbus_server_get_client_address:
  * @server: A #GDBusServer.
  *
- * Gets a D-Bus address string that can be used by clients to connect
- * to @server.
+ * Gets a
+ * [D-Bus address](https://dbus.freedesktop.org/doc/dbus-specification.html#addresses)
+ * string that can be used by clients to connect to @server.
  *
  * Returns: A D-Bus address string. Do not free, the string is owned
  * by @server.
@@ -870,7 +871,7 @@ try_tcp (GDBusServer  *server,
               g_set_error (error,
                            G_IO_ERROR,
                            g_io_error_from_errno (errno),
-                           _("Error writing nonce file at '%s': %s"),
+                           _("Error writing nonce file at “%s”: %s"),
                            server->nonce_file,
                            strerror (errno));
               goto out;
@@ -1041,7 +1042,7 @@ initable_init (GInitable     *initable,
       g_set_error (&last_error,
                    G_IO_ERROR,
                    G_IO_ERROR_INVALID_ARGUMENT,
-                   _("The string '%s' is not a valid D-Bus GUID"),
+                   _("The string “%s” is not a valid D-Bus GUID"),
                    server->guid);
       goto out;
     }
@@ -1081,7 +1082,7 @@ initable_init (GInitable     *initable,
             g_set_error (&this_error,
                          G_IO_ERROR,
                          G_IO_ERROR_INVALID_ARGUMENT,
-                         _("Cannot listen on unsupported transport '%s'"),
+                         _("Cannot listen on unsupported transport “%s”"),
                          transport_name);
 
           g_free (transport_name);

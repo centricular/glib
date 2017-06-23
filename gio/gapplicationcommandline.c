@@ -230,7 +230,7 @@ struct _GApplicationCommandLinePrivate
   GVariant *arguments;
   GVariant *options;
   GVariantDict *options_dict;
-  gchar *cwd;
+  gchar *cwd;  /* in GLib filename encoding, not UTF-8 */
 
   gchar **environ;
   gint exit_status;
@@ -449,7 +449,7 @@ g_application_command_line_class_init (GApplicationCommandLineClass *class)
 /**
  * g_application_command_line_get_arguments:
  * @cmdline: a #GApplicationCommandLine
- * @argc: (out) (allow-none): the length of the arguments array, or %NULL
+ * @argc: (out) (optional): the length of the arguments array, or %NULL
  *
  * Gets the list of arguments that was passed on the command line.
  *
@@ -552,7 +552,7 @@ g_application_command_line_get_stdin (GApplicationCommandLine *cmdline)
  * The return value should not be modified or freed and is valid for as
  * long as @cmdline exists.
  *
- * Returns: the current directory, or %NULL
+ * Returns: (nullable) (type filename): the current directory, or %NULL
  *
  * Since: 2.28
  **/

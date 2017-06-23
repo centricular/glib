@@ -580,9 +580,9 @@ g_dbus_message_new (void)
 
 /**
  * g_dbus_message_new_method_call:
- * @name: (allow-none): A valid D-Bus name or %NULL.
+ * @name: (nullable): A valid D-Bus name or %NULL.
  * @path: A valid object path.
- * @interface_: (allow-none): A valid D-Bus interface name or %NULL.
+ * @interface_: (nullable): A valid D-Bus interface name or %NULL.
  * @method: A valid method name.
  *
  * Creates a new #GDBusMessage for a method call.
@@ -999,7 +999,7 @@ g_dbus_message_get_header (GDBusMessage             *message,
  * g_dbus_message_set_header:
  * @message: A #GDBusMessage.
  * @header_field: A 8-bit unsigned integer (typically a value from the #GDBusMessageHeaderField enumeration)
- * @value: (allow-none): A #GVariant to set the header field or %NULL to clear the header field.
+ * @value: (nullable): A #GVariant to set the header field or %NULL to clear the header field.
  *
  * Sets a header field on @message.
  *
@@ -1162,7 +1162,7 @@ g_dbus_message_get_unix_fd_list (GDBusMessage  *message)
 /**
  * g_dbus_message_set_unix_fd_list:
  * @message: A #GDBusMessage.
- * @fd_list: (allow-none): A #GUnixFDList or %NULL.
+ * @fd_list: (nullable): A #GUnixFDList or %NULL.
  *
  * Sets the UNIX file descriptors associated with @message. As a
  * side-effect the %G_DBUS_MESSAGE_HEADER_FIELD_NUM_UNIX_FDS header
@@ -1366,7 +1366,7 @@ read_string (GMemoryBuffer  *mbuf,
       g_set_error (error,
                    G_IO_ERROR,
                    G_IO_ERROR_INVALID_ARGUMENT,
-                   _("Expected NUL byte after the string '%s' but found byte %d"),
+                   _("Expected NUL byte after the string “%s” but found byte %d"),
                    str, mbuf->data[mbuf->pos + len]);
       g_free (str);
       mbuf->pos += len + 1;
@@ -1386,7 +1386,7 @@ read_string (GMemoryBuffer  *mbuf,
                    G_IO_ERROR,
                    G_IO_ERROR_INVALID_ARGUMENT,
                    _("Expected valid UTF-8 string but found invalid bytes at byte offset %d (length of string is %d). "
-                     "The valid UTF-8 string up until that point was '%s'"),
+                     "The valid UTF-8 string up until that point was “%s”"),
                    offset,
                    (gint) len,
                    valid_str);
@@ -1451,7 +1451,7 @@ parse_value_from_blob (GMemoryBuffer       *buf,
                indent, "",
                just_align ? "Aligning" : "Reading",
                s,
-               (gint) g_seekable_tell (G_SEEKABLE (buf)));
+               (gint) buf->pos);
       g_free (s);
     }
 #endif /* DEBUG_SERIALIZER */
@@ -1584,7 +1584,7 @@ parse_value_from_blob (GMemoryBuffer       *buf,
               g_set_error (&local_error,
                            G_IO_ERROR,
                            G_IO_ERROR_INVALID_ARGUMENT,
-                           _("Parsed value '%s' is not a valid D-Bus object path"),
+                           _("Parsed value “%s” is not a valid D-Bus object path"),
                            v);
               goto fail;
             }
@@ -1606,7 +1606,7 @@ parse_value_from_blob (GMemoryBuffer       *buf,
               g_set_error (&local_error,
                            G_IO_ERROR,
                            G_IO_ERROR_INVALID_ARGUMENT,
-                           _("Parsed value '%s' is not a valid D-Bus signature"),
+                           _("Parsed value “%s” is not a valid D-Bus signature"),
                        v);
               goto fail;
             }
@@ -1673,7 +1673,7 @@ parse_value_from_blob (GMemoryBuffer       *buf,
                   g_set_error (&local_error,
                                G_IO_ERROR,
                                G_IO_ERROR_INVALID_ARGUMENT,
-                               _("Encountered array of type 'a%c', expected to have a length a multiple "
+                               _("Encountered array of type “a%c”, expected to have a length a multiple "
                                  "of %u bytes, but found to be %u bytes in length"),
                                g_variant_type_peek_string (element_type)[0], fixed_size, array_len);
                   goto fail;
@@ -1840,7 +1840,7 @@ parse_value_from_blob (GMemoryBuffer       *buf,
                   g_set_error (&local_error,
                                G_IO_ERROR,
                                G_IO_ERROR_INVALID_ARGUMENT,
-                               _("Parsed value '%s' for variant is not a valid D-Bus signature"),
+                               _("Parsed value “%s” for variant is not a valid D-Bus signature"),
                                sig);
                   goto fail;
                 }
@@ -1864,7 +1864,7 @@ parse_value_from_blob (GMemoryBuffer       *buf,
           g_set_error (&local_error,
                        G_IO_ERROR,
                        G_IO_ERROR_INVALID_ARGUMENT,
-                       _("Error deserializing GVariant with type string '%s' from the D-Bus wire format"),
+                       _("Error deserializing GVariant with type string “%s” from the D-Bus wire format"),
                        s);
           g_free (s);
           goto fail;
@@ -2048,7 +2048,7 @@ g_dbus_message_new_from_blob (guchar                *blob,
       g_set_error (error,
                    G_IO_ERROR,
                    G_IO_ERROR_INVALID_ARGUMENT,
-                   _("Invalid endianness value. Expected 0x6c ('l') or 0x42 ('B') but found value 0x%02x"),
+                   _("Invalid endianness value. Expected 0x6c (“l”) or 0x42 (“B”) but found value 0x%02x"),
                    endianness);
       goto out;
     }
@@ -2117,7 +2117,7 @@ g_dbus_message_new_from_blob (guchar                *blob,
           g_set_error (error,
                        G_IO_ERROR,
                        G_IO_ERROR_INVALID_ARGUMENT,
-                       _("Signature header with signature '%s' found but message body is empty"),
+                       _("Signature header with signature “%s” found but message body is empty"),
                        signature_str);
           goto out;
         }
@@ -2131,7 +2131,7 @@ g_dbus_message_new_from_blob (guchar                *blob,
               g_set_error (error,
                            G_IO_ERROR,
                            G_IO_ERROR_INVALID_ARGUMENT,
-                           _("Parsed value '%s' is not a valid D-Bus signature (for body)"),
+                           _("Parsed value “%s” is not a valid D-Bus signature (for body)"),
                            signature_str);
               goto out;
             }
@@ -2512,7 +2512,7 @@ append_value_to_blob (GVariant            *value,
           g_set_error (error,
                        G_IO_ERROR,
                        G_IO_ERROR_INVALID_ARGUMENT,
-                       _("Error serializing GVariant with type string '%s' to the D-Bus wire format"),
+                       _("Error serializing GVariant with type string “%s” to the D-Bus wire format"),
                        g_variant_get_type_string (value));
           goto fail;
         }
@@ -2701,7 +2701,7 @@ g_dbus_message_to_blob (GDBusMessage          *message,
           g_set_error (error,
                        G_IO_ERROR,
                        G_IO_ERROR_INVALID_ARGUMENT,
-                       _("Message body has signature '%s' but there is no signature header"),
+                       _("Message body has signature “%s” but there is no signature header"),
                        signature_str);
           g_free (tupled_signature_str);
           goto out;
@@ -2711,7 +2711,7 @@ g_dbus_message_to_blob (GDBusMessage          *message,
           g_set_error (error,
                        G_IO_ERROR,
                        G_IO_ERROR_INVALID_ARGUMENT,
-                       _("Message body has type signature '%s' but signature in the header field is '%s'"),
+                       _("Message body has type signature “%s” but signature in the header field is “%s”"),
                        tupled_signature_str, g_variant_get_type_string (message->body));
           g_free (tupled_signature_str);
           goto out;
@@ -2727,7 +2727,7 @@ g_dbus_message_to_blob (GDBusMessage          *message,
           g_set_error (error,
                        G_IO_ERROR,
                        G_IO_ERROR_INVALID_ARGUMENT,
-                       _("Message body is empty but signature in the header field is '(%s)'"),
+                       _("Message body is empty but signature in the header field is “(%s)”"),
                        signature_str);
           goto out;
         }
@@ -3280,7 +3280,7 @@ g_dbus_message_to_gerror (GDBusMessage   *message,
               g_dbus_error_set_dbus_error (error,
                                            error_name,
                                            "",
-                                           _("Error return with body of type '%s'"),
+                                           _("Error return with body of type “%s”"),
                                            g_variant_get_type_string (body));
             }
           else
@@ -3444,6 +3444,7 @@ g_dbus_message_print (GDBusMessage *message,
     {
       g_string_append_printf (str, "%*s  (none)\n", indent, "");
     }
+  g_list_free (keys);
   g_string_append_printf (str, "%*sBody: ", indent, "");
   if (message->body != NULL)
     {

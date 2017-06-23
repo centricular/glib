@@ -140,6 +140,17 @@ typedef struct _GSourceFuncs            GSourceFuncs;
  * GPid is used in GLib only for descendant processes spawned with
  * the g_spawn functions.
  */
+/* defined in glibconfig.h */
+
+/**
+ * G_PID_FORMAT:
+ *
+ * A format specifier that can be used in printf()-style format strings
+ * when printing a #GPid.
+ *
+ * Since: 2.50
+ */
+/* defined in glibconfig.h */
 
 /**
  * GSourceFunc:
@@ -355,10 +366,10 @@ gint     g_main_context_query    (GMainContext *context,
                                   GPollFD      *fds,
                                   gint          n_fds);
 GLIB_AVAILABLE_IN_ALL
-gint     g_main_context_check    (GMainContext *context,
-                                  gint          max_priority,
-                                  GPollFD      *fds,
-                                  gint          n_fds);
+gboolean     g_main_context_check    (GMainContext *context,
+                                      gint          max_priority,
+                                      GPollFD      *fds,
+                                      gint          n_fds);
 GLIB_AVAILABLE_IN_ALL
 void     g_main_context_dispatch (GMainContext *context);
 

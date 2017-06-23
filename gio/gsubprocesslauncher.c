@@ -79,13 +79,16 @@ verify_disposition (const gchar      *stream_name,
       if (n_bits)
         {
           GFlagsClass *class;
-          GFlagsValue *value;
+          guint i;
 
           class = g_type_class_peek (G_TYPE_SUBPROCESS_FLAGS);
-          while ((value = g_flags_get_first_value (class, filtered_flags)))
+
+          for (i = 0; i < class->n_values; i++)
             {
-              g_string_append_printf (err, " %s", value->value_name);
-              filtered_flags &= value->value;
+              const GFlagsValue *value = &class->values[i];
+
+              if (filtered_flags & value->value)
+                g_string_append_printf (err, " %s", value->value_name);
             }
 
           g_type_class_unref (class);
@@ -225,7 +228,7 @@ g_subprocess_launcher_new (GSubprocessFlags flags)
 /**
  * g_subprocess_launcher_set_environ:
  * @self: a #GSubprocess
- * @env: the replacement environment
+ * @env: (array zero-terminated=1): the replacement environment
  *
  * Replace the entire environment of processes launched from this
  * launcher with the given 'environ' variable.
@@ -236,6 +239,9 @@ g_subprocess_launcher_new (GSubprocessFlags flags)
  *
  * As an alternative, you can use g_subprocess_launcher_setenv(),
  * g_subprocess_launcher_unsetenv(), etc.
+ *
+ * Pass %NULL to inherit the parent  process' environment. Pass an
+ * empty array to set an empty environment.
  *
  * On UNIX, all strings in this array can be arbitrary byte strings.
  * On Windows, they should be in UTF-8.
@@ -320,7 +326,7 @@ g_subprocess_launcher_getenv (GSubprocessLauncher *self,
 /**
  * g_subprocess_launcher_set_cwd:
  * @self: a #GSubprocess
- * @cwd: the cwd for launched processes
+ * @cwd: (type filename): the cwd for launched processes
  *
  * Sets the current working directory that processes will be launched
  * with.
@@ -403,7 +409,7 @@ assign_fd (gint *fd_ptr, gint fd)
 /**
  * g_subprocess_launcher_set_stdin_file_path:
  * @self: a #GSubprocessLauncher
- * @path: a filename or %NULL
+ * @path: (type filename) (nullable: a filename or %NULL
  *
  * Sets the file path to use as the stdin for spawned processes.
  *
@@ -466,7 +472,7 @@ g_subprocess_launcher_take_stdin_fd (GSubprocessLauncher *self,
 /**
  * g_subprocess_launcher_set_stdout_file_path:
  * @self: a #GSubprocessLauncher
- * @path: a filename or %NULL
+ * @path: (type filename) (nullable): a filename or %NULL
  *
  * Sets the file path to use as the stdout for spawned processes.
  *
@@ -529,7 +535,7 @@ g_subprocess_launcher_take_stdout_fd (GSubprocessLauncher *self,
 /**
  * g_subprocess_launcher_set_stderr_file_path:
  * @self: a #GSubprocessLauncher
- * @path: a filename or %NULL
+ * @path: (type filename) (nullable): a filename or %NULL
  *
  * Sets the file path to use as the stderr for spawned processes.
  *
