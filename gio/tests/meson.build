@@ -85,7 +85,7 @@ if dbus1_dep.found()
       'gdbus-serialization.c', 'gdbus-tests.c',
       install : false,
       c_args : test_c_args,
-      dependencies : [libglib_dep, libgmodule_dep, libgio_dep, dbus1_dep])
+      dependencies : [libglib_dep, libgmodule_dep, libgio_dep, libgobject_dep, dbus1_dep])
   test('gdbus-serialization', exe, env : test_env)
 endif
 
@@ -182,7 +182,7 @@ if host_machine.system() != 'windows'
           'gdbus-sessionbus.c', 'gdbus-tests.c', extra_src,
           install : false,
           c_args : test_c_args,
-          dependencies : [libglib_dep, libgmodule_dep, libgio_dep] + extra_deps)
+          dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep] + extra_deps)
       test(test_name, exe, env : test_env)
     endforeach
 
@@ -190,7 +190,7 @@ if host_machine.system() != 'windows'
           'gdbus-sessionbus.c', 'gdbus-tests.c', gdbus_test_codegen_generated,
           install : false,
           c_args : test_c_args + ['-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_36', '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_36'],
-          dependencies : [libglib_dep, libgmodule_dep, libgio_dep])
+          dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep])
     test('gdbus-test-codegen-old', exe, env : test_env)
 
     # There is already a gapplication exe target in gio so need to use a
@@ -202,7 +202,7 @@ if host_machine.system() != 'windows'
                        'gdbus-sessionbus.c', 'gdbus-tests.c',
                        install : false,
                        c_args : test_c_args,
-                       dependencies : [libglib_dep, libgmodule_dep, libgio_dep])
+                       dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep])
     endif
     test('gapplication', exe, env : test_env)
 
@@ -213,25 +213,25 @@ if host_machine.system() != 'windows'
   executable('gdbus-overflow', 'gdbus-overflow.c',
       install : false,
       c_args : test_c_args,
-      dependencies : [libglib_dep, libgmodule_dep, libgio_dep])
+      dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep])
 
   exe = executable('gdbus-connection-flush', 'gdbus-connection-flush.c',
       'test-io-stream.c', 'test-pipe-unix.c',
       install : false,
       c_args : test_c_args,
-      dependencies : [libglib_dep, libgmodule_dep, libgio_dep])
+      dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep])
   test('gdbus-connection-flush', exe, env : test_env)
 
   exe = executable('gdbus-non-socket', 'gdbus-non-socket.c',
       'gdbus-tests.c', 'test-io-stream.c', 'test-pipe-unix.c',
       install : false,
       c_args : test_c_args,
-      dependencies : [libglib_dep, libgmodule_dep, libgio_dep])
+      dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep])
   test('gdbus-non-socket', exe, env : test_env)
 
   # Generate test.mo from de.po using msgfmt
   msgfmt = find_program('msgfmt', required : false)
-  if msgfmt.found()
+  if false
     subdir('de/LC_MESSAGES')
     # gsettings target exe already exists in gio directory
     exe = executable('gsettings-test', 'gsettings.c', test_mo,
@@ -240,7 +240,7 @@ if host_machine.system() != 'windows'
                    '-DSRCDIR="@0@"'.format(meson.current_source_dir()),
                    '-DTEST_LOCALE_PATH="@0@"'.format(test_mo_dir),
                  ],
-        dependencies : [libglib_dep, libgmodule_dep, libgio_dep])
+        dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep])
     test('gsettings', exe, env : test_env)
   endif
 endif # unix
@@ -270,7 +270,7 @@ foreach test_name : gio_tests
   exe = executable(test_name, srcs,
       install : false,
       c_args : test_c_args,
-      dependencies : [libglib_dep, libgmodule_dep, libgio_dep] + extra_deps)
+      dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep] + extra_deps)
   if test_name == 'testfilemonitor'
     test(test_name, exe, env : test_env, timeout : 45)
   else
@@ -329,7 +329,7 @@ foreach extra_program : uninstalled_test_extra_programs + test_extra_programs
   executable(extra_program[0], srcs,
       install : false,
       c_args : test_c_args,
-      dependencies : [libglib_dep, libgmodule_dep, libgio_dep] + extra_deps)
+      dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep] + extra_deps)
 endforeach
 
 if not meson.is_cross_build() or meson.has_exe_wrapper()
@@ -404,7 +404,7 @@ if not meson.is_cross_build() or meson.has_exe_wrapper()
       test_resources_c, test_resources2_c, test_resources2_h,
       install : false,
       c_args : test_c_args,
-      dependencies : [libglib_dep, libgmodule_dep, libgio_dep])
+      dependencies : [libglib_dep, libgmodule_dep, libgobject_dep, libgio_dep])
   test('resources', exe, env : test_env)
 endif
 

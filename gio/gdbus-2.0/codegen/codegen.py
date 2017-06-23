@@ -19,6 +19,7 @@
 #
 # Author: David Zeuthen <davidz@redhat.com>
 
+import os
 import sys
 
 from . import config
@@ -69,7 +70,7 @@ class CodeGenerator:
                      '#include "%s"\n'
                      '\n'
                      '#include <string.h>\n'
-                     %(self.header_name))
+                     %(os.path.basename(self.header_name)))
 
         self.c.write('#ifdef G_OS_UNIX\n'
                      '#  include <gio/gunixfdlist.h>\n'
