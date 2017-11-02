@@ -265,12 +265,15 @@ install_data('glib_gdb.py', install_dir : join_paths(glib_pkgdatadir, 'gdb'))
 
 gdb_conf = configuration_data()
 gdb_conf.set('datadir', glib_datadir)
+gdb_install_dir = false
+if host_system != 'windows'
+  gdb_install_dir = join_paths(get_option('datadir'), 'gdb/auto-load' + glib_libdir)
+endif
 configure_file(
   input: 'libglib-gdb.py.in',
   output: 'libglib-2.0.so.@0@-gdb.py'.format(library_version),
   configuration: gdb_conf,
-  install: true,
-  install_dir: join_paths(get_option('datadir'), 'gdb/auto-load' + glib_libdir)
+  install_dir: gdb_install_dir
 )
 
 if enable_systemtap
